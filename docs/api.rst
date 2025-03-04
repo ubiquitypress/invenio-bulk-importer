@@ -12,8 +12,3 @@ API Docs
 .. automodule:: invenio_bulk_importer.ext
    :members:
 
-Views
------
-
-.. automodule:: invenio_bulk_importer.views
-   :members:
