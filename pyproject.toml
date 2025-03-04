@@ -1,0 +1,100 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2025 Ubiquity Press.
+#
+# Invenio-Bulk-Importer is free software; you can redistribute it and/or
+# modify it under the terms of the MIT License; see LICENSE file for more
+# details.
+
+[project]
+name = "invenio-bulk-importer"
+description = "Bulk creation, import, and/or edittion of record and files for Invenio."
+keywords = ["invenio TODO"]
+license = {text = "MIT"}
+authors = [{name = "Ubiquity Press", email = "info@ubiquitypress.com"}]
+classifiers = ["Development Status :: 1 - Planning"]
+dynamic = ["readme", "version"]
+requires-python = ">=3.7"
+dependencies = [
+  "invenio-base>=2.0.0,<3.0.0",
+  "invenio-i18n>=3.0.0,<4.0.0",
+  "invenio-rdm-records>=17.0.1,<18.0.0",
+  "invenio-search[opensearch2]>=3.0.0,<4.0.0",
+  "marshmallow>=3.26.1",
+]
+
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/ubiquitypress/invenio-bulk-importer"
+
+[project.optional-dependencies]
+tests = [
+  "invenio-app>=2.0.0,<3.0.0",
+  "invenio-db[postgresql,mysql]>=2.0.0,<3.0.0",
+  "pytest-invenio>=3.0.0,<4.0.0",
+  "pytest-black-ng>=0.4.0",
+  "sphinx>=4.5.0",
+  "ipdb",
+]
+
+[project.entry-points."invenio_base.apps"]
+invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
+
+[project.entry-points."invenio_i18n.translations"]
+messages = "invenio_bulk_importer"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+platforms = ["any"]
+
+[tool.setuptools.packages]
+find = {namespaces = false}
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.rst", "CHANGES.rst"]}
+version = {attr = "invenio_bulk_importer.__version__"}
+
+[tool.build_sphinx]
+source-dir = "docs/"
+build-dir = "docs/_build"
+all_files = "1"
+
+[tool.distutils.bdist_wheel]
+universal = 1
+
+[tool.pydocstyle]
+add_ignore = "D401,D403"
+
+[tool.isort]
+profile = "black"
+
+[tool.check-manifest]
+ignore = """
+*-requirements.txt"""
+
+[tool.pytest.ini_options]
+addopts = '--black --isort --pydocstyle --doctest-glob="*.rst" --doctest-modules --cov=invenio_bulk_importer --cov-report=term-missing'
+testpaths = ["docs", "tests", "invenio_bulk_importer"]
+
+[tool.compile_catalog]
+directory = "invenio_bulk_importer/translations/"
+use-fuzzy = "True"
+
+[tool.extract_messages]
+copyright_holder = "Ubiquity Press"
+msgid_bugs_address = "esteban.gabancho@ubiquitypress.com"
+mapping-file = "babel.ini"
+output-file = "invenio_bulk_importer/translations/messages.pot"
+add-comments = "NOTE"
+
+[tool.init_catalog]
+input-file = "invenio_bulk_importer/translations/messages.pot"
+output-dir = "invenio_bulk_importer/translations/"
+
+[tool.update_catalog]
+input-file = "invenio_bulk_importer/translations/messages.pot"
+output-dir = "invenio_bulk_importer/translations/"
