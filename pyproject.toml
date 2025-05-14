@@ -14,7 +14,7 @@ license = {text = "MIT"}
 authors = [{name = "Ubiquity Press", email = "info@ubiquitypress.com"}]
 classifiers = ["Development Status :: 1 - Planning"]
 dynamic = ["readme", "version"]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 dependencies = [
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",

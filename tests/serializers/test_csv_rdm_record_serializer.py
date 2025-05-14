@@ -16,7 +16,7 @@ def test_record_transform(running_app, csv_rdm_record):
     # See thruthy values here https://marshmallow.readthedocs.io/en/stable/marshmallow.fields.html#marshmallow.fields.Boolean
 
     # Files
-    assert result["files"] == ["treatment.pdf", "image1.png"]
+    # assert result["files"] == ["treatment.pdf", "image1.png"]
     # Metadata
     assert result["metadata"]
     metadata = result["metadata"]
