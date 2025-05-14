@@ -11,10 +11,10 @@
 from collections import namedtuple
 
 import pytest
-from invenio_app.factory import create_api
 from invenio_access.models import ActionRoles
 from invenio_access.permissions import superuser_access, system_identity
 from invenio_accounts.models import Role
+from invenio_app.factory import create_api
 from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
 from invenio_vocabularies.contrib.awards.api import Award
@@ -39,6 +39,8 @@ def app_config(app_config):
     app_config["RECORDS_REFRESOLVER_STORE"] = (
         "invenio_jsonschemas.proxies.current_refresolver_store"
     )
+    app_config["JSONSCHEMAS_HOST"] = "not-used"
+    app_config["THEME_FRONTPAGE"] = False
     return app_config
 
 
