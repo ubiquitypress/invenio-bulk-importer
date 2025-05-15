@@ -4,169 +4,257 @@
 #
 # Invenio-Bulk-Importer is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
+#
 
-"""CSV RDM record serializer."""
+"""CSV serializer for RDM records."""
+
+from typing import Annotated, Literal
 
 from flask import current_app
+from invenio_base.utils import obj_or_import_string
 from invenio_records_resources.proxies import current_service_registry
 from invenio_records_resources.tasks import system_identity
-from marshmallow import EXCLUDE, Schema, ValidationError, fields, post_load
-from marshmallow_utils.fields import NestedAttribute, SanitizedUnicode
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import PydanticCustomError
 
 from invenio_bulk_importer.serializers.base import CSVSerializer
+from invenio_bulk_importer.serializers.records.utils import (
+    generate_error_messages,
+    process_grouped_fields,
+)
 
 
-class NewlineList(fields.Field):
-    """Custom Marshmallow field to handle newline-separated lists."""
-
-    def _deserialize(self, value, attr, data, **kwargs):
-        if value is None:
-            return []
-        return [v.strip() for v in value.split("\n")]
+def ensure_new_line_list(value: str) -> list:
+    """Ensure CSV column is converted into a list."""
+    if value is None:
+        return []
+    return [v.strip() for v in value.split("\n")]
 
 
-class MetadataSchema(Schema):
-    """Schema for handling etadata fields."""
+# Custom field to handle newline-separated lists
+NewlineList = Annotated[
+    list[str], BeforeValidator(ensure_new_line_list), Field(default_factory=list)
+]
 
-    class Meta:
-        """Meta attributes for the schema."""
 
-        unknown = EXCLUDE
+class Geometry(BaseModel):
+    """Schema for geometry location."""
 
-    title = fields.String()
-    publication_date = fields.String()
-    description = fields.String()
-    version = fields.String()
-    publisher = fields.String()
-    resource_type = fields.Method(
-        "get_resource_type",
-        data_key="resource_type.id",
-        deserialize="load_resource_type",
-        required=True,
+    type: str
+    coordinates: list[str]
+
+
+class LocationFeature(BaseModel):
+    """Schema for location feature."""
+
+    description: str
+    geometry: Geometry
+    place: str
+
+
+class Location(BaseModel):
+    """Schema for locations."""
+
+    features: list[LocationFeature] = Field(default_factory=list)
+
+
+class BaseIdentifier(BaseModel):
+    """Schema for identifiers."""
+
+    scheme: str | None = Field(default=None)
+    identifier: str | None = Field(default=None)
+
+
+class FullIdentifier(BaseIdentifier):
+    """Schema for full identifiers."""
+
+    resource_type: dict[str, str | None] = Field(default_factory=dict)
+    relation_type: dict[str, str | None] = Field(default_factory=dict)
+
+
+class Affiliation(BaseModel):
+    """Schema for affiliation."""
+
+    id: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+
+class PersonOrOrg(BaseModel):
+    """Schema for person or organization."""
+
+    family_name: str | None = Field(default=None)
+    given_name: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+    type: Literal["personal", "organizational"]
+    identifiers: list[BaseIdentifier] = Field(default_factory=list)
+
+
+CreatibutorList = Annotated[
+    list[dict[str, PersonOrOrg | list[Affiliation]]], Field(default_factory=list)
+]
+
+
+class MetadataSchema(BaseModel):
+    """Schema for handling metadata fields."""
+
+    title: str = Field(min_length=1)
+    publication_date: str = Field(min_length=1)
+    description: str | None
+    version: str | None
+    publisher: str
+    resource_type: dict[str, str] = Field(
+        default_factory=list, alias="resource_type.id"
     )
-    languages = fields.Method(
-        "get_language",
-        data_key="languages.id",
-        deserialize="load_languages",
+    languages: list[dict[str, str]] = Field(default_factory=list, alias="languages.id")
+    locations: Location | dict = Field(default_factory=dict)
+    creators: CreatibutorList
+    contributors: CreatibutorList
+    additional_descriptions: list[dict[str, str | dict[str, str]]] = Field(
+        default_factory=list
     )
+    subjects: list[dict[str, str]] = Field(default_factory=list)
+    references: list[dict[str, str]] = Field(
+        default_factory=list, alias="references.reference"
+    )
+    identifiers: list[BaseIdentifier] = Field(default_factory=list)
+    related_identifiers: list[FullIdentifier] = Field(default_factory=list)
+    rights: list[dict[str, str | dict[str, str]]] = Field(default_factory=list)
 
-    def get_resource_type(self, obj):
-        raise NotImplementedError()
-
-    def get_language(self, obj):
-        return NotImplementedError()
-
-    def load_resource_type(self, value):
+    @field_validator("resource_type", mode="before")
+    def validate_resource_type(cls, value):
+        """Validate resource type."""
         if not value:
-            raise ValidationError("Missing 'resource_type.id'", "resource_type")
+            raise ValueError("Missing 'resource_type.id'")
         return {"id": value}
 
-    def load_languages(self, value):
+    @field_validator("languages", mode="before")
+    def validate_languages(cls, value):
+        """Validate languages."""
         if not value:
             return []
-        return [{"id": lang} for l in value.split("\n") if (lang := l.strip())]
+        return [{"id": lang.strip()} for lang in value.split("\n") if lang.strip()]
 
-    def load_creatibutor(self, original, creatibutor_type):
-        output = {creatibutor_type: []}
-        people_input = {
-            key: value
-            for key, value in original.items()
-            if key.startswith(f"{creatibutor_type}.")
-        }
-        # Determine the number of people
-        num_people = max(len(value.split("\n")) for value in people_input.values())
+    @field_validator("references", mode="before")
+    def validate_references(cls, value):
+        """Validate references."""
+        if not value:
+            return []
+        return [
+            {"reference": reference.strip()}
+            for reference in value.split("\n")
+            if reference.strip()
+        ]
 
-        # Initialize a list of dictionaries for each person
-        people = [{} for _ in range(num_people)]
-        for key, value in people_input.items():
-            parts = key.split(".")
-            values = value.split("\n")
+    @model_validator(mode="before")
+    def load_rights(cls, values):
+        """Load rights."""
+        temp_out = process_grouped_fields(values, "rights")
+        output = []
+        for identifier in temp_out:
+            ident_dict = {}
+            if identifier.get("id"):
+                ident_dict["id"] = identifier.get("id")
+            if identifier.get("title"):
+                ident_dict["title"] = {"en": identifier.get("title")}
+            output.append(ident_dict)
+        values["rights"] = output
+        return values
 
-            for i in range(num_people):
-                person = people[i]
-                val = values[i] if i < len(values) else ""
-
-                if not val:
-                    continue
-                if parts[1] in ["type", "given_name", "family_name", "name"]:
-                    person[parts[1]] = val
-                # TODO: allow for more than this identifier types
-                elif parts[1] in ["orcid", "gnd", "isni", "ror"]:
-                    if "identifiers" not in person:
-                        person["identifiers"] = []
-                    person["identifiers"].append(
-                        {"scheme": parts[1], "identifier": val}
-                    )
-                elif parts[1] == "affiliations":
-                    if "affiliations" not in person:
-                        person["affiliations"] = []
-                    affiliation = {}
-                    if parts[2] == "id":
-                        affiliation["id"] = val
-                    elif parts[2] == "name":
-                        affiliation["name"] = val
-                    person["affiliations"].append(affiliation)
-                elif parts[1] == "role":
-                    if parts[2] == "id":
-                        person["role"] = dict(id=val)
-
-        cleaned_people = [person for person in people if person]
-
-        # Validate and add the processed people to the output
-        for person in cleaned_people:
-            affiliations = person.pop("affiliations", [])
-            person_type = person.get("type")
-            if person_type not in ["organizational", "personal"]:
-                raise ValidationError(
-                    "Invalid type. Only 'organizational' and 'personal' are supported.",
-                    creatibutor_type,
-                )
-            if person_type == "organizational" and "name" not in person:
-                raise ValidationError(
-                    "An organizational person must have 'name' filled in",
-                    creatibutor_type,
-                )
-            elif person_type == "personal" and "family_name" not in person:
-                raise ValidationError(
-                    "A personal person must have 'family_name' filled in",
-                    creatibutor_type,
-                )
-
-            output[creatibutor_type].append(
-                {"person_or_org": person, "affiliations": affiliations}
+    @model_validator(mode="before")
+    def load_locations(cls, values):
+        """Load locations."""
+        temp_out = process_grouped_fields(values, "locations")
+        output = {}
+        for location in temp_out:
+            if "features" not in output:
+                output["features"] = []
+            output["features"].append(
+                {
+                    "description": location.get("description"),
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [location.get("lat"), location.get("lon")],
+                    },
+                    "place": location.get("place"),
+                }
             )
-        return output
+        values["locations"] = output
+        return values
 
-    def load_additional_description(self, original):
+    @model_validator(mode="before")
+    def load_identifiers(cls, values):
+        """Load identifiers."""
+        temp_out = process_grouped_fields(values, "identifiers")
+        output = []
+        for identifier in temp_out:
+            output.append(
+                {
+                    "identifier": identifier.get("identifier"),
+                    "scheme": identifier.get("scheme"),
+                }
+            )
+        values["identifiers"] = output
+        return values
+
+    @model_validator(mode="before")
+    def load_related_identifiers(cls, values):
+        """Load identifiers."""
+        temp_out = process_grouped_fields(values, "related_identifiers")
+        output = []
+        for identifier in temp_out:
+            output.append(
+                {
+                    "identifier": identifier.get("identifier"),
+                    "scheme": identifier.get("scheme"),
+                    "relation_type": {
+                        "id": identifier.get("relation_type.id"),
+                    },
+                    "resource_type": {
+                        "id": identifier.get("resource_type.id"),
+                    },
+                }
+            )
+        values["related_identifiers"] = output
+        return values
+
+    @model_validator(mode="before")
+    def load_additional_description(cls, values):
         """Load addictional desciptions."""
-        output = {"additional_descriptions": []}
-
-        for key, value in original.items():
+        output = []
+        for key, value in values.items():
             if key.startswith("description.") and value:
                 _, *modifiers = key.split(".")
                 info = {"type": {"id": modifiers[0]}}
                 if len(modifiers) == 2:
                     # We have language information, i.e. "desciption.abstract.eng"
                     info["lang"] = {"id": modifiers[1]}
+                output.append({"description": value, **info})
+        values["additional_descriptions"] = output
+        return values
 
-                output["additional_descriptions"].append({"description": value, **info})
+    @model_validator(mode="before")
+    def validate_subjects(cls, values):
+        """Load and transform subjects."""
+        output = []
 
-        return output
-
-    def load_subjects(self, original):
-        output = {"subjects": []}
-
-        keywords = original.get("keywords", "")
+        keywords = values.get("keywords", "")
 
         for k in keywords.split("\n"):
             if keyword := k.strip():
-                output["subjects"].append({"subject": keyword})
+                output.append({"subject": keyword})
 
-        subjects = original.get("subjects.subject", "").split("\n")
-        schemes = original.get("subjects.scheme", "").split("\n")
+        subjects = values.get("subjects.subject", "").split("\n")
+        schemes = values.get("subjects.scheme", "").split("\n")
 
         if len(subjects) != len(schemes):
-            raise ValidationError("Each subject must have a schema and a subject")
+            raise ValueError("Each subject must have a schema and a subject")
 
         subjects_service = current_service_registry.get("subjects")
         for subject, scheme in zip(subjects, schemes):
@@ -176,60 +264,160 @@ class MetadataSchema(Schema):
             )
             if hits.total != 1:
                 # To avoid non predictable outputs we only allow for one match
-                raise ValidationError(f"Subject {scheme}:{subject} cannot be matched.")
+                raise ValueError(f"Subject {scheme}:{subject} cannot be matched.")
 
             subject = next(hits.hits)
 
-            output["subjects"].append(
+            output.append(
                 {
                     "id": subject["id"],
                     "subject": subject["subject"],
                 }
             )
+        values["subjects"] = output
+        return values
 
-        return output
+    @model_validator(mode="before")
+    def validate_creators_and_contributors(cls, values):
+        """Validate and transform creators and contributors."""
 
-    @post_load(pass_original=True)
-    def load_complex_fields(self, result, original, **kwargs):
-        """Remove empty values from the resulting dicionary."""
-        creators = self.load_creatibutor(original, "creators")
-        contributors = self.load_creatibutor(original, "contributors")
-        additional_descriptions = self.load_additional_description(original)
-        subjects = self.load_subjects(original)
+        def load_creatibutor(original, creatibutor_type):
+            """Load and transform creators or contributors."""
+            temp_output = process_grouped_fields(original, creatibutor_type)
+            # Construct expected structures
+            output = []
+            for person in temp_output:
+                # Construct person_or_org
+                person_or_org = {
+                    "type": person.get("type"),
+                    "family_name": person.get("family_name"),
+                    "given_name": person.get("given_name"),
+                    "name": person.get("name"),
+                }
+                person_or_org["identifiers"] = []
+                # Extract all keys that start with 'identifiers.'
+                identifier_keys = [
+                    key for key in person.keys() if key.startswith("identifiers.")
+                ]
+                for key in identifier_keys:
+                    scheme = key.split(".")[1]  # Extract the scheme from the key
+                    if val := person.get(key):
+                        person_or_org["identifiers"].append(
+                            {"scheme": scheme, "identifier": val}
+                        )
+                # Construct affiliations
+                affiliations = []
+                aff_names = (
+                    person.get("affiliations.name", "").split(";")
+                    if person.get("affiliations.name")
+                    else []
+                )
+                aff_ids = (
+                    person.get("affiliations.id", "").split(";")
+                    if person.get("affiliations.id")
+                    else []
+                )
+                max_affiliations = max(len(aff_names), len(aff_ids))
+                for i in range(max_affiliations):
+                    affiliation = {}
+                    if i < len(aff_ids) and aff_ids[i].strip():
+                        affiliation["id"] = aff_ids[i].strip()
+                    if i < len(aff_names) and aff_names[i].strip():
+                        affiliation["name"] = aff_names[i].strip()
+                    if affiliation:
+                        affiliations.append(affiliation)
 
-        result.update(creators)
-        result.update(contributors)
-        result.update(additional_descriptions)
-        result.update(subjects)
+                # Construct creator/contributor dict
+                output.append(
+                    {"person_or_org": person_or_org, "affiliations": affiliations}
+                )
+            return output
 
-        # Filter empty values
-        return {k: v for k, v in result.items() if v}
+        values["creators"] = load_creatibutor(values, "creators")
+        values["contributors"] = load_creatibutor(values, "contributors")
+        return values
+
+    @model_validator(mode="wrap")
+    def additional_validation(cls, values, handler):
+        """Wrap the validation process to add additional checks."""
+        errors = []
+        result = None
+        # Run the default validation first
+        if not isinstance(values, dict):
+            # second tie around wrap after all before and after validations
+            return handler(values)
+
+        try:
+            result = handler(values)
+        except ValidationError as e:
+            # Collect existing validation errors
+            errors.extend(e.errors())
+        # Add custom validation logic
+        creators = values.get("creators") if errors else result.creators
+        if not creators:
+            creators_missing_error = PydanticCustomError(
+                "no_creators_error", "Need at least one creator to be present.", {}
+            )
+            errors.append(
+                {
+                    "loc": (
+                        "creators.type",
+                        "creators.given_name",
+                        "creators.family_name",
+                        "creators.name",
+                        "creators.identifiers.*",
+                        "creators.affiliations.*",
+                    ),
+                    "type": creators_missing_error,
+                    "msg": "Need at least one creator to be present.",
+                }
+            )
+
+        # If there are any errors, raise a new ValidationError
+        if errors:
+            formatted_errors = []
+            for e in errors:
+                formatted_errors.append(
+                    {
+                        "loc": e["loc"],
+                        "msg": e["msg"],
+                        "type": e["type"],
+                        "ctx": e.get("ctx", {}),
+                    }
+                )
+            raise ValidationError.from_exception_data(cls.__name__, formatted_errors)
+
+        return result
 
 
-class CSVRecordSchema(Schema):
-    """CSV RDM Record marchmallow schema."""
+class CSVRecordSchema(BaseModel):
+    """CSV RDM Record Pydantic schema."""
 
-    class Meta:
-        """Meta attributes for the schema."""
+    pids: dict = Field(default_factory=dict, alias="doi")
+    default_community: str = Field(default=None)
+    communities: NewlineList
+    files: NewlineList = Field(alias="filenames")
+    access: dict[str, str | dict[str, str | None]]
+    custom_fields: dict[str, str | dict | list] = Field(default_factory=dict)
+    metadata: MetadataSchema
 
-        unknown = EXCLUDE
+    @field_validator("pids", mode="before")
+    def validate_references(cls, value):
+        """Validate pids."""
+        if not value:
+            return {}
+        return {"doi": {"identifier": value, "provider": "external"}}
 
-    id = fields.String()
-    default_community = fields.String()
-    communities = NewlineList()
-    files = NewlineList(data_key="filenames")
-
-    def load_access(self, original):
-        """Load the access fields."""
-        access = dict(
-            record=original.get("access.record", None) or "public",
-            files=original.get("access.files", None) or "public",
-        )
-
-        # Extract access fields
-        embargo_active = original.get("access.embargo.active", None)
-        embargo_until = original.get("access.embargo.until", None)
-        embargo_reason = original.get("access.embargo.reason", None)
+    @model_validator(mode="before")
+    def validate_complex_metadata(cls, values):
+        """Validate and transform complex metadata fields."""
+        access = {
+            "record": values.get("access.record", "public"),
+            "files": values.get("access.files", "public"),
+        }
+        embargo_active = values.get("access.embargo.active")
+        embargo_until = values.get("access.embargo.until")
+        embargo_reason = values.get("access.embargo.reason")
 
         if embargo_active or embargo_until or embargo_reason:
             access["embargo"] = {
@@ -237,37 +425,38 @@ class CSVRecordSchema(Schema):
                 "until": embargo_until,
                 "reason": embargo_reason,
             }
+        values["access"] = access
+        values["metadata"] = MetadataSchema(**values)
+        return values
 
-        return access
-
-    def load_custom_fields(self, original):
+    @model_validator(mode="before")
+    def load_custom_fields(cls, values):
         """Load custom fields from config."""
         custom_fields = dict()
         config = current_app.config.get("IMPORTER_CUSTOM_FIELDS", {}).get(
             "csv_rdm_record_serializer", []
         )
         for t in config:
-            custom_fields[t["field"]] = t["transfromer"](original)
-
-        return custom_fields
-
-    @post_load(pass_original=True)
-    def load_complex_metadata(self, result, original, **kwargs):
-        """Load all complex metadata after initial load."""
-        access = self.load_access(original)
-        custom_fields = self.load_custom_fields(original)
-        metadata = MetadataSchema().load(original)
-
-        result.update(
-            {"access": access, "custom_fields": custom_fields, "metadata": metadata}
-        )
-        return result
+            result = obj_or_import_string(t["transformer"])(values)
+            # only add to custom fields if the transformer returns a value
+            if result:
+                custom_fields[t["field"]] = result
+        values["custom_fields"] = custom_fields
+        return values
 
 
 class CSVRDMRecordSerializer(CSVSerializer):
     """Serializer for RDM records."""
 
     def transform(self, obj: dict) -> dict:
-        """."""
-        schema = CSVRecordSchema()
-        return schema.load(obj)
+        """Transform the input object into a CSV-compatible format.
+
+        Args:
+            obj (dict): The input object to transform.
+        Returns:
+            dict: The transformed object.
+        """
+        try:
+            return CSVRecordSchema(**obj).model_dump(exclude_unset=True)
+        except ValidationError as e:
+            return generate_error_messages(e.errors())

@@ -41,6 +41,14 @@ def app_config(app_config):
     )
     app_config["JSONSCHEMAS_HOST"] = "not-used"
     app_config["THEME_FRONTPAGE"] = False
+    app_config["IMPORTER_CUSTOM_FIELDS"] = {
+        "csv_rdm_record_serializer": [
+            {
+                "field": "imprint:imprint",
+                "transformer": "invenio_bulk_importer.serializers.records.examples.transformers.imprint_transform",
+            }
+        ]
+    }
     return app_config
 
 

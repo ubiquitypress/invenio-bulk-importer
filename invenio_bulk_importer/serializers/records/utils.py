@@ -1,0 +1,78 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2024 Ubiquity Press
+#
+# Invenio-Bulk-Importer is free software; you can redistribute it and/or modify
+# it under the terms of the MIT License; see LICENSE file for more details.
+#
+
+"""Serializer utils module."""
+
+from dataclasses import asdict, dataclass
+
+
+def process_grouped_fields(original: dict, prefix: str) -> list:
+    """Process grouped fields in the input dictionary.
+
+    Args:
+        original (dict): The original dictionary containing grouped fields.
+        prefix (str): The prefix used to identify the grouped fields.
+    Returns:
+        list: A list of dictionaries representing the grouped fields.
+    """
+    group_input = {
+        key: value for key, value in original.items() if key.startswith(f"{prefix}.")
+    }
+    # Get a temporary list of item information for easier working.
+    try:
+        num_items = max(len(value.split("\n")) for value in group_input.values())
+    except Exception:
+        num_items = 0
+
+    output = []
+    keys = group_input.keys()
+    for i in range(num_items):
+        item_dict = {}
+        for key in keys:
+            parts = key.split(".")
+            values = group_input[key].split("\n")
+            item_dict[".".join(parts[1:])] = (
+                values[i] if i < len(values) and values[i].strip() else None
+            )
+        # Remove list dict item if all values are None
+        if all(value is None for value in item_dict.values()):
+            continue
+        output.append(item_dict)
+    return output
+
+
+@dataclass
+class Error:
+    """Class to hold error information."""
+
+    type: str
+    loc: tuple
+    msg: str
+
+
+@dataclass
+class ErrorMessage:
+    """Class to hold error message for different validation scenarios."""
+
+    errors: list[Error]
+
+
+def generate_error_messages(errors: list) -> dict:
+    """Generate error messages from a list of errors.
+
+    Args:
+        errors (list): A list of errors to process.
+    Returns:
+        ErrorMessages: An object containing the processed error messages.
+    """
+    error_messages = []
+    for error in errors:
+        error_messages.append(
+            Error(type=error["type"], loc=tuple(error["loc"]), msg=error["msg"])
+        )
+    return asdict(ErrorMessage(errors=error_messages))
