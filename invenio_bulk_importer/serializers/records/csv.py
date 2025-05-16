@@ -28,6 +28,7 @@ from invenio_bulk_importer.serializers.base import CSVSerializer
 from invenio_bulk_importer.serializers.records.utils import (
     generate_error_messages,
     process_grouped_fields,
+    process_grouped_fields_via_column_title,
 )
 
 
@@ -105,8 +106,14 @@ class MetadataSchema(BaseModel):
     """Schema for handling metadata fields."""
 
     title: str = Field(min_length=1)
+    additional_titles: list[dict[str, str | dict[str, str]]] = Field(
+        default_factory=list
+    )
     publication_date: str = Field(min_length=1)
     description: str | None
+    additional_descriptions: list[dict[str, str | dict[str, str]]] = Field(
+        default_factory=list
+    )
     version: str | None
     publisher: str
     resource_type: dict[str, str] = Field(
@@ -116,9 +123,6 @@ class MetadataSchema(BaseModel):
     locations: Location | dict = Field(default_factory=dict)
     creators: CreatibutorList
     contributors: CreatibutorList
-    additional_descriptions: list[dict[str, str | dict[str, str]]] = Field(
-        default_factory=list
-    )
     subjects: list[dict[str, str]] = Field(default_factory=list)
     references: list[dict[str, str]] = Field(
         default_factory=list, alias="references.reference"
@@ -225,19 +229,18 @@ class MetadataSchema(BaseModel):
         return values
 
     @model_validator(mode="before")
-    def load_additional_description(cls, values):
+    def load_additional_descriptions(cls, values):
         """Load addictional desciptions."""
-        output = []
-        for key, value in values.items():
-            if key.startswith("description.") and value:
-                _, *modifiers = key.split(".")
-                info = {"type": {"id": modifiers[0]}}
-                if len(modifiers) == 2:
-                    # We have language information, i.e. "desciption.abstract.eng"
-                    info["lang"] = {"id": modifiers[1]}
-                output.append({"description": value, **info})
-        values["additional_descriptions"] = output
-        return values
+        return process_grouped_fields_via_column_title(
+            values, "additional_descriptions", "description"
+        )
+
+    @model_validator(mode="before")
+    def load_additional_titles(cls, values):
+        """Load addictional titles."""
+        return process_grouped_fields_via_column_title(
+            values, "additional_titles", "title"
+        )
 
     @model_validator(mode="before")
     def validate_subjects(cls, values):

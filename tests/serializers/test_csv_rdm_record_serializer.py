@@ -105,6 +105,13 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         }
     ]
     assert metadata["title"] == "Micraster ernsti Schlüter 2024, sp. nov."
+    assert metadata["additional_titles"] == [
+        {
+            "title": "Something else",
+            "type": {"id": "alternative-title"},
+            "lang": {"id": "eng"},
+        },
+    ]
     assert metadata["publication_date"] == "2024-01-18"
     assert metadata["description"]
     assert metadata["languages"] == [{"id": "eng"}]
