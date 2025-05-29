@@ -11,9 +11,7 @@
 from collections import namedtuple
 
 import pytest
-from invenio_access.models import ActionRoles
-from invenio_access.permissions import superuser_access, system_identity
-from invenio_accounts.models import Role
+from invenio_access.permissions import system_identity
 from invenio_app.factory import create_api
 from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
@@ -22,6 +20,10 @@ from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
+
+from invenio_bulk_importer.serializers.records.examples.custom_fields.imprint import (
+    IMPRINT_CUSTOM_FIELDS,
+)
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +43,7 @@ def app_config(app_config):
     )
     app_config["JSONSCHEMAS_HOST"] = "not-used"
     app_config["THEME_FRONTPAGE"] = False
-    app_config["IMPORTER_CUSTOM_FIELDS"] = {
+    app_config["BULK_IMPORTER_CUSTOM_FIELDS"] = {
         "csv_rdm_record_serializer": [
             {
                 "field": "imprint:imprint",
@@ -49,6 +51,9 @@ def app_config(app_config):
             }
         ]
     }
+    app_config["RDM_NAMESPACES"] = {"imprint": None}
+    app_config["RDM_CUSTOM_FIELDS"] = IMPRINT_CUSTOM_FIELDS
+    app_config["RDM_COMMUNITY_REQUIRED_TO_PUBLISH"] = True
     return app_config
 
 

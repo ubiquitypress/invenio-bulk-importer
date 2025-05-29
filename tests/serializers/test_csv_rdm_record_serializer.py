@@ -13,11 +13,12 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
     """Test the transformation of a CSV record into a RDM record."""
     serializer = CSVRDMRecordSerializer()
     try:
-        result = serializer.transform(csv_rdm_record)
+        result, errors = serializer.transform(csv_rdm_record)
     except Exception:
         raise
 
     # Access
+    assert errors is None
     assert result
     assert result["access"] == {
         "record": "public",
@@ -48,7 +49,6 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
                 "type": "personal",
                 "family_name": "Schlüter",
                 "given_name": "Nils",
-                "name": None,
                 "identifiers": [
                     {"scheme": "orcid", "identifier": "0000-0002-5699-3684"}
                 ],
@@ -60,7 +60,6 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
                 "type": "personal",
                 "family_name": "John",
                 "given_name": "Smith",
-                "name": None,
                 "identifiers": [{"scheme": "gnd", "identifier": "0000-9876554"}],
             },
             "affiliations": [{"name": "CERN"}],
@@ -68,8 +67,6 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         {
             "person_or_org": {
                 "type": "organizational",
-                "family_name": None,
-                "given_name": None,
                 "name": "Ubiquity Press",
                 "identifiers": [],
             },
@@ -78,8 +75,6 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         {
             "person_or_org": {
                 "type": "organizational",
-                "family_name": None,
-                "given_name": None,
                 "name": "California Institute of Technology",
                 "identifiers": [
                     {"scheme": "isni", "identifier": "0000 0001 0706 8890"},
@@ -95,13 +90,15 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
                 "type": "personal",
                 "family_name": "Collins",
                 "given_name": "Bob",
-                "name": None,
                 "identifiers": [
                     {"scheme": "orcid", "identifier": "0000-0002-5699-3685"},
                     {"scheme": "isni", "identifier": "0000 0001 0706 8891"},
                 ],
             },
             "affiliations": [{"name": "Somewhere Press"}, {"name": "Everywhere Press"}],
+            "role": {
+                "id": "05dxps055",
+            },
         }
     ]
     assert metadata["title"] == "Micraster ernsti Schlüter 2024, sp. nov."
@@ -243,9 +240,10 @@ def test_schema_without_custom_fields(running_app, csv_rdm_record):
 
     serializer = CSVRDMRecordSerializer()
     try:
-        result = serializer.transform(csv_rdm_record_without_cf)
+        result, errors = serializer.transform(csv_rdm_record_without_cf)
     except Exception:
         raise
+    assert errors is None
     assert result["custom_fields"] == {}
 
 
@@ -261,12 +259,11 @@ def test_schema_missing_required_field(running_app, csv_rdm_record):
 
     serializer = CSVRDMRecordSerializer()
     try:
-        result = serializer.transform(csv_rdm_record)
+        result, errors = serializer.transform(csv_rdm_record)
     except Exception:
         raise
-    # with pytest.raises(ValidationError) as exc_info:
-    #     CSVRecordSchema(**csv_rdm_record).model_dump(exclude_unset=True)
-    # errors = exc_info.value.errors()
+
+    assert result is None
     expected_errors = [
         {
             "type": "string_too_short",
@@ -299,11 +296,11 @@ def test_schema_missing_required_field(running_app, csv_rdm_record):
     # Check that each expected error is in the actual errors
     for expected_error in expected_errors:
         assert any(
-            expected_error["type"] == error["type"]
-            and expected_error["loc"] == error["loc"]
-            and expected_error["msg"] == error["msg"]
-            for error in result["errors"]
+            expected_error["type"] == error.type
+            and expected_error["loc"] == error.loc
+            and expected_error["msg"] == error.msg
+            for error in errors
         ), f"Expected error not found: {expected_error}"
 
     # Check that we have the right number of errors
-    assert len(result["errors"]) == len(expected_errors)
+    assert len(errors) == len(expected_errors)

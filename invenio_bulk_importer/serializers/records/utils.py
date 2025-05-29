@@ -8,19 +8,23 @@
 
 """Serializer utils module."""
 
-from dataclasses import asdict, dataclass
+
+from dataclasses import asdict
+
+from invenio_bulk_importer.errors import Error
 
 
-def process_grouped_fields_via_column_title(original: dict, group_prefix: str, main_key: str) -> dict:
-    """Process grouped fields in the input dictionary, where column name dictates the
-    grouping type and language.
+def process_grouped_fields_via_column_title(
+    original: dict, group_prefix: str, main_key: str
+) -> dict:
+    """Process grouped fields in the input dictionary, where column name dictates the grouping type and language.
 
     Column in CSV can be defined with a type and language (optional), e.g.:
     - <group_prefix>.<type>.<lang>
       - additional_descriptions.methods.eng
 
     this would create:
-    
+
     "additional_descriptions": [
         {<main_key>: "value in column", "type": {"id": "method"}, "lang": {"id": "eng"}}
     ]
@@ -89,33 +93,17 @@ def process_grouped_fields(original: dict, prefix: str) -> list:
     return output
 
 
-@dataclass
-class Error:
-    """Class to hold error information."""
-
-    type: str
-    loc: tuple
-    msg: str
-
-
-@dataclass
-class ErrorMessage:
-    """Class to hold error message for different validation scenarios."""
-
-    errors: list[Error]
-
-
-def generate_error_messages(errors: list) -> dict:
+def generate_error_messages(errors: list) -> list[Error]:
     """Generate error messages from a list of errors.
 
     Args:
         errors (list): A list of errors to process.
     Returns:
-        ErrorMessages: An object containing the processed error messages.
+        list: List containing Error objects with type, loc, and msg attributes.
     """
     error_messages = []
     for error in errors:
         error_messages.append(
             Error(type=error["type"], loc=tuple(error["loc"]), msg=error["msg"])
         )
-    return asdict(ErrorMessage(errors=error_messages))
+    return error_messages

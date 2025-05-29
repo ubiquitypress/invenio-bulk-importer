@@ -16,6 +16,8 @@ classifiers = ["Development Status :: 1 - Planning"]
 dynamic = ["readme", "version"]
 requires-python = ">=3.10"
 dependencies = [
+  "boto3>=1.26.0,<2.0",
+  "google-cloud-storage>=2.8.0,<3.2",
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",
   "invenio-rdm-records>=17.0.1,<18.0.0",

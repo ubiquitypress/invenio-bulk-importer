@@ -24,6 +24,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from invenio_bulk_importer.errors import Error
 from invenio_bulk_importer.serializers.base import CSVSerializer
 from invenio_bulk_importer.serializers.records.utils import (
     generate_error_messages,
@@ -76,7 +77,7 @@ class BaseIdentifier(BaseModel):
 class FullIdentifier(BaseIdentifier):
     """Schema for full identifiers."""
 
-    resource_type: dict[str, str | None] = Field(default_factory=dict)
+    resource_type: dict[str, str | None] = Field(default=None)
     relation_type: dict[str, str | None] = Field(default_factory=dict)
 
 
@@ -92,13 +93,14 @@ class PersonOrOrg(BaseModel):
 
     family_name: str | None = Field(default=None)
     given_name: str | None = Field(default=None)
-    name: str | None = Field(default=None)
+    name: str | None = None
     type: Literal["personal", "organizational"]
     identifiers: list[BaseIdentifier] = Field(default_factory=list)
 
 
 CreatibutorList = Annotated[
-    list[dict[str, PersonOrOrg | list[Affiliation]]], Field(default_factory=list)
+    list[dict[str, PersonOrOrg | list[Affiliation] | dict[str, str]]],
+    Field(default_factory=list),
 ]
 
 
@@ -117,7 +119,7 @@ class MetadataSchema(BaseModel):
     version: str | None
     publisher: str
     resource_type: dict[str, str] = Field(
-        default_factory=list, alias="resource_type.id"
+        default_factory=dict, alias="resource_type.id"
     )
     languages: list[dict[str, str]] = Field(default_factory=list, alias="languages.id")
     locations: Location | dict = Field(default_factory=dict)
@@ -165,7 +167,7 @@ class MetadataSchema(BaseModel):
             ident_dict = {}
             if identifier.get("id"):
                 ident_dict["id"] = identifier.get("id")
-            if identifier.get("title"):
+            elif identifier.get("title"):
                 ident_dict["title"] = {"en": identifier.get("title")}
             output.append(ident_dict)
         values["rights"] = output
@@ -213,18 +215,21 @@ class MetadataSchema(BaseModel):
         temp_out = process_grouped_fields(values, "related_identifiers")
         output = []
         for identifier in temp_out:
-            output.append(
-                {
-                    "identifier": identifier.get("identifier"),
-                    "scheme": identifier.get("scheme"),
-                    "relation_type": {
-                        "id": identifier.get("relation_type.id"),
-                    },
-                    "resource_type": {
-                        "id": identifier.get("resource_type.id"),
-                    },
+            new_identifier = {
+                "identifier": identifier.get("identifier"),
+                "scheme": identifier.get("scheme"),
+                "relation_type": {
+                    "id": identifier.get("relation_type.id"),
+                },
+                "resource_type": {
+                    "id": identifier.get("resource_type.id"),
+                },
+            }
+            if identifier.get("resource_type.id"):
+                new_identifier["relation_type"] = {
+                    "id": identifier.get("relation_type.id"),
                 }
-            )
+            output.append(new_identifier)
         values["related_identifiers"] = output
         return values
 
@@ -329,11 +334,16 @@ class MetadataSchema(BaseModel):
                         affiliation["name"] = aff_names[i].strip()
                     if affiliation:
                         affiliations.append(affiliation)
-
                 # Construct creator/contributor dict
-                output.append(
-                    {"person_or_org": person_or_org, "affiliations": affiliations}
-                )
+                creatibutor_dict = {
+                    "person_or_org": person_or_org,
+                    "affiliations": affiliations,
+                }
+                # Add role if exists
+                if person.get("role.id"):
+                    creatibutor_dict["role"] = dict(id=person.get("role.id"))
+                output.append(creatibutor_dict)
+            print(output)
             return output
 
         values["creators"] = load_creatibutor(values, "creators")
@@ -436,7 +446,7 @@ class CSVRecordSchema(BaseModel):
     def load_custom_fields(cls, values):
         """Load custom fields from config."""
         custom_fields = dict()
-        config = current_app.config.get("IMPORTER_CUSTOM_FIELDS", {}).get(
+        config = current_app.config.get("BULK_IMPORTER_CUSTOM_FIELDS", {}).get(
             "csv_rdm_record_serializer", []
         )
         for t in config:
@@ -451,7 +461,7 @@ class CSVRecordSchema(BaseModel):
 class CSVRDMRecordSerializer(CSVSerializer):
     """Serializer for RDM records."""
 
-    def transform(self, obj: dict) -> dict:
+    def transform(self, obj: dict) -> tuple[dict | None, list[Error] | None]:
         """Transform the input object into a CSV-compatible format.
 
         Args:
@@ -460,6 +470,12 @@ class CSVRDMRecordSerializer(CSVSerializer):
             dict: The transformed object.
         """
         try:
-            return CSVRecordSchema(**obj).model_dump(exclude_unset=True)
+            return (
+                CSVRecordSchema(**obj).model_dump(
+                    exclude_unset=True,
+                    exclude_none=True,
+                ),
+                None,
+            )
         except ValidationError as e:
-            return generate_error_messages(e.errors())
+            return None, generate_error_messages(e.errors())
