@@ -88,6 +88,8 @@ def test_community_verification(rdm_record_instance, community):
     rdm_record_instance._verify_communities_exist(communities)
     assert rdm_record_instance.is_succssful is True
     assert rdm_record_instance.errors == []
+    assert rdm_record_instance._community_uuids.get("default")
+    assert rdm_record_instance._community_uuids.get("ids")
 
 
 def test_community_verification_missing_community(rdm_record_instance, community):
@@ -102,6 +104,8 @@ def test_community_verification_missing_community(rdm_record_instance, community
             msg="Community 'test-community-1' not found.",
         )
     ]
+    assert not rdm_record_instance._community_uuids.get("default")
+    assert not rdm_record_instance._community_uuids.get("ids")
 
 
 def test_at_least_one_community_required(rdm_record_instance, community):
@@ -116,12 +120,14 @@ def test_at_least_one_community_required(rdm_record_instance, community):
             msg="At least one community is required to publish the record.",
         )
     ]
+    assert not rdm_record_instance._community_uuids.get("default")
+    assert not rdm_record_instance._community_uuids.get("ids")
 
 
 def test_verify_serialized_data_is_valid(rdm_record_instance):
     """Test that serialized data is verified correctly via invenio record schema."""
     rdm_record_instance._verify_rdm_record_correctness(
-        rdm_record_instance._serializer_data
+        rdm_record_instance._serializer_record_data
     )
     assert rdm_record_instance.is_succssful is True
     assert rdm_record_instance.errors == []
@@ -371,7 +377,7 @@ def test_verify_serialized_data_is_valid(rdm_record_instance):
 def test_verify_serialized_data_is_invalid(rdm_record_instance):
     """Test that serialized data when verified capture errors as invalid."""
     # Invalidate serialized data input
-    input_dict = deepcopy(rdm_record_instance._serializer_data)
+    input_dict = deepcopy(rdm_record_instance._serializer_record_data)
     input_dict["metadata"]["contributors"][0].pop(
         "role"
     )  # Remove role for a contributor as required.
@@ -404,9 +410,11 @@ def test_full_successful_validation_of_record(rdm_record_instance, community):
 
 def test_full_unsuccessful_validation_of_record(rdm_record_instance, community):
     """Test that a full validation of the record is successful."""
-    rdm_record_instance._communities = ["garbage-community"]  # Invalid community.
+    rdm_record_instance._serializer_communities = [
+        "garbage-community"
+    ]  # Invalid community.
     rdm_record_instance._files.append("missing_file.pdf")  # Invalid local files.
-    rdm_record_instance._serializer_data["metadata"]["contributors"][0].pop(
+    rdm_record_instance._serializer_record_data["metadata"]["contributors"][0].pop(
         "role"
     )  # Remove role for a contributor as required.
     rdm_record_instance.validate()
