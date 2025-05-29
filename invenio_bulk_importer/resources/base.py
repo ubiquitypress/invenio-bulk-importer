@@ -33,29 +33,27 @@ class RecordType(ABC):
         self._files: list[str] = (
             serializer_data[0].pop("files", []) if serializer_data[0] else []
         )
-        self._communities: list[str] = (
+        self._serializer_communities: list[str] = (
             serializer_data[0].pop("communities", []) if serializer_data[0] else []
         )
         self._is_community_required = current_app.config.get(
             "RDM_COMMUNITY_REQUIRED_TO_PUBLISH", False
         )
-        self._serializer_data: dict | None = (
+        self._serializer_record_data: dict | None = (
             serializer_data[0] if serializer_data[0] else None
         )
         self._errors: list[Error] = serializer_data[1] if serializer_data[1] else []
+        self._community_uuids: dict[str, str | list[str]] = dict(default=None, ids=[])
         self._record: dict | None = None
         self.is_succssful = True
 
     @abstractmethod
     def validate(self) -> bool:
-        """Load the stream object by object.
+        """Load the stream object by object."""
 
-        :param stream: IO
-        """
-
-    # @abstractmethod
-    # def run(self, obj: dict) -> dict:
-    #     """Transform a given object into something Invenio understands."""
+    @abstractmethod
+    def run(self) -> dict:
+        """Transform a given object into something Invenio understands."""
 
     @property
     def errors(self) -> list[Error]:
@@ -101,12 +99,15 @@ class RDMRecord(RecordType):
                 )
             )
             return
-        for community_slug in communities:
+        for idx, community_slug in enumerate(communities):
             try:
-                current_communities.service.read(
+                community = current_communities.service.read(
                     id_=community_slug,
                     identity=system_identity,
                 )
+                if idx == 0:
+                    self._community_uuids["default"] = community.id
+                self._community_uuids["ids"].append(community.id)
             except PIDDoesNotExistError:
                 self._add_error(
                     Error(
@@ -266,6 +267,14 @@ class RDMRecord(RecordType):
         Returns True if the validation is successful, otherwise False.
         """
         self._verify_files_accessible(self._files)
-        self._verify_communities_exist(self._communities)
-        self._verify_rdm_record_correctness(self._serializer_data)
+        self._verify_communities_exist(self._serializer_communities)
+        self._verify_rdm_record_correctness(self._serializer_record_data)
         return self.is_succssful
+
+    def run(self) -> dict:
+        """Run the record creation process.
+
+        Returns:
+            dict: The created record.
+        """
+        pass
