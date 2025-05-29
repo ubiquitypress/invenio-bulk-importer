@@ -266,6 +266,15 @@ class RDMRecord(RecordType):
 
         Returns True if the validation is successful, otherwise False.
         """
+        if not self._serializer_record_data:
+            self._add_error(
+                Error(
+                    type="serialized_record_not_provided",
+                    loc="serialized_record",
+                    msg="Existing serialized errors, cannot progress any further.",
+                )
+            )
+            return False
         self._verify_files_accessible(self._files)
         self._verify_communities_exist(self._serializer_communities)
         self._verify_rdm_record_correctness(self._serializer_record_data)
