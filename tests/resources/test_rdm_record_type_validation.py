@@ -437,3 +437,32 @@ def test_full_unsuccessful_validation_of_record(rdm_record_instance, community):
         ),
     ]
     assert rdm_record_instance._record is None
+
+
+def test_full_unsuccessful_validation_of_record_as_serialization_failed(
+    rdm_record_instance,
+):
+    """Test that a full validation of the record is successful."""
+    rdm_record_instance._serializer_record_data = None  # Invalid serialized data.
+    rdm_record_instance.errors.append(
+        Error(
+            type="existing error",
+            loc="serialized_record",
+            msg="Already broken.",
+        )
+    )
+    rdm_record_instance.validate()
+    assert rdm_record_instance.is_succssful is False
+    assert rdm_record_instance.errors == [
+        Error(
+            type="existing error",
+            loc="serialized_record",
+            msg="Already broken.",
+        ),
+        Error(
+            type="serialized_record_not_provided",
+            loc="serialized_record",
+            msg="Existing serialized errors, cannot progress any further.",
+        ),
+    ]
+    assert rdm_record_instance._record is None
