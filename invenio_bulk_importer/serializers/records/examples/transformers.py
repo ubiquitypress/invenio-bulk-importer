@@ -16,7 +16,7 @@ def imprint_transform(values) -> dict:
 
     Config in importer would be as follows:
     ```python
-    app_config["IMPORTER_CUSTOM_FIELDS"] = {
+    app_config["BULK_IMPORTER_CUSTOM_FIELDS"] = {
         "csv_rdm_record_serializer": [
             {
                 "field": "imprint:imprint",
@@ -32,7 +32,6 @@ def imprint_transform(values) -> dict:
 
     def pop_or_update_key(dict_output: dict, key: str, value: str):
         """Pop or update a key in the dictionary."""
-        print(value)
         if value:
             dict_output[key] = value
         else:

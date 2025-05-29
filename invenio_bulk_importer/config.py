@@ -16,3 +16,12 @@ BULK_IMPORTER_DEFAULT_VALUE = "foobar"
 
 BULK_IMPORTER_BASE_TEMPLATE = "invenio_bulk_importer/base.html"
 """Default base template for the demo page."""
+
+BULK_IMPORTER_CUSTOM_FIELDS = {}
+"""Custom fields for the importer."""
+
+BULK_IMPORTER_SERIALIZERS = {}
+"""List of serializers to be used by the importer."""
+
+BULK_IMPORTER_OPTIONS = {}
+"""List of serializers to be used by the importer."""
