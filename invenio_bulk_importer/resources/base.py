@@ -26,24 +26,17 @@ from invenio_bulk_importer.errors import Error
 
 
 class RecordType(ABC):
-    """Base serializer class."""
+    """Base record type class."""
 
     def __init__(self, serializer_data: tuple[dict | None, list[Error]]):
         """Initialize the record type."""
-        self._files: list[str] = (
-            serializer_data[0].pop("files", []) if serializer_data[0] else []
-        )
-        self._serializer_communities: list[str] = (
-            serializer_data[0].pop("communities", []) if serializer_data[0] else []
-        )
-        self._is_community_required = current_app.config.get(
-            "RDM_COMMUNITY_REQUIRED_TO_PUBLISH", False
-        )
+        # self._files: list[str] = (
+        #     serializer_data[0].pop("files", []) if serializer_data[0] else []
+        # )
         self._serializer_record_data: dict | None = (
             serializer_data[0] if serializer_data[0] else None
         )
         self._errors: list[Error] = serializer_data[1] if serializer_data[1] else []
-        self._community_uuids: dict[str, str | list[str]] = dict(default=None, ids=[])
         self._record: dict | None = None
         self.is_succssful = True
 
@@ -68,28 +61,21 @@ class RecordType(ABC):
         self.is_succssful = False
 
 
-class RDMRecord(RecordType):
-    """Base class for all CSV serializers."""
+class CommunityMixin:
+    """Mixin to handle community-related operations."""
 
-    def __init__(
-        self, serializer_data: tuple[dict | None, dict | None], bucket_id: str, **kwargs
-    ):
-        """Initialize the resource.
-
-        Args:
-            serializer_data (tuple[dict | None, dict | None]): Data from the serializer [serialized record dict, errors].
-            bucket_id (str): Identifier for the invenio bucket.
-            **kwargs: Additional keyword arguments.
-        """
-        # Initialize the serializer data and errors
-        super().__init__(serializer_data)
-        self.bucket_id = bucket_id
-        self.kwargs = kwargs
+    def _add_community_vars(self, serializer_data: tuple[dict | None, list[Error]]):
+        """Initialize the mixin with serializer data."""
+        self._serializer_communities: list[str] = (
+            serializer_data[0].pop("communities", []) if serializer_data[0] else []
+        )
+        self._is_community_required = current_app.config.get(
+            "RDM_COMMUNITY_REQUIRED_TO_PUBLISH", False
+        )
+        self._community_uuids: dict[str, str | list[str]] = dict(default=None, ids=[])
 
     def _verify_communities_exist(self, communities: list):
         """Verify that the listed communities exist."""
-        # Implement community existence check logic here
-        # For example, check against a database or an API
         if not communities and self._is_community_required:
             self._add_error(
                 Error(
@@ -116,6 +102,19 @@ class RDMRecord(RecordType):
                         msg=f"Community '{community_slug}' not found.",
                     )
                 )
+
+
+class FileMixin:
+    """Mixin to handle file-related operations."""
+
+    def _add_file_vars(
+        self, serializer_data: tuple[dict | None, list[Error]], bucket_id: str
+    ):
+        """Initialize the mixin with serializer data."""
+        self._files: list[str] = (
+            serializer_data[0].pop("files", []) if serializer_data[0] else []
+        )
+        self.bucket_id = bucket_id
 
     def _check_url_file_accessibility(self, file: str):
         """Check if the URL file is accessible."""
@@ -209,6 +208,29 @@ class RDMRecord(RecordType):
                             msg=f"File '{file}' not found in invenio bucket.",
                         )
                     )
+
+
+class RDMRecord(CommunityMixin, FileMixin, RecordType):
+    """RDM Record validation and loading class."""
+
+    def __init__(
+        self,
+        serializer_data: tuple[dict | None, dict | None],
+        bucket_id: str = None,
+        **kwargs,
+    ):
+        """Initialize the rdm record resource.
+
+        Args:
+            serializer_data (tuple[dict | None, dict | None]): Data from the serializer [serialized record dict, errors].
+            bucket_id (str): Identifier for the invenio bucket of the Bulk Importer process.
+            **kwargs: Additional keyword arguments.
+        """
+        # Initialize the serializer data and errors
+        self._add_community_vars(serializer_data)
+        self._add_file_vars(serializer_data, bucket_id)
+        super().__init__(serializer_data)
+        self.kwargs = kwargs
 
     def _verify_rdm_record_correctness(self, serializer_data):
         """Verify that the RDM record is correct."""
