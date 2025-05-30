@@ -17,13 +17,12 @@ from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
 
-from invenio_bulk_importer.resources.base import RDMRecord
+from invenio_bulk_importer.resources.rdm import RDMRecord
 
 
 @pytest.fixture
 def bucket_with_object_version(db, location):
-    """Creates a file instance."""
-    # Create a Bucket and ObjectVersion
+    """Create a bucket and objectversion."""
     b1 = Bucket.create(location=location)
     with open("README.rst", "rb") as fp:
         ObjectVersion.create(b1, "README.rst", stream=fp)
