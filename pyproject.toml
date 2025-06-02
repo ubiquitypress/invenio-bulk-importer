@@ -60,6 +60,18 @@ tests = [
 [project.entry-points."invenio_base.apps"]
 invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
 
+[project.entry-points."invenio_base.api_apps"]
+invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
+
+[project.entry-points."invenio_celery.tasks"]
+invenio_bulk_importer = "invenio_bulk_importer.tasks"
+
+[project.entry-points."invenio_db.alembic"]
+invenio_bulk_importer = "invenio_bulk_importer:alembic"
+
+[project.entry-points."invenio_db.models"]
+invenio_bulk_importer = "invenio_bulk_importer.records.models"
+
 [project.entry-points."invenio_i18n.translations"]
 messages = "invenio_bulk_importer"
 
