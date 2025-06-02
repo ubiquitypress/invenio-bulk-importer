@@ -62,14 +62,6 @@ def app_config(app_config):
             "serializers": [CSVRDMRecordSerializer],
         }
     }
-    app_config["BULK_IMPORTER_SERIALIZERS"] = {
-        "csv_rdm_record_type": [
-            {
-                "csv": False,
-                "publish": True,
-            }
-        ]
-    }
     app_config["RDM_NAMESPACES"] = {"imprint": None}
     app_config["RDM_CUSTOM_FIELDS"] = IMPRINT_CUSTOM_FIELDS
     app_config["RDM_COMMUNITY_REQUIRED_TO_PUBLISH"] = True
