@@ -6,28 +6,43 @@
 # modify it under the terms of the MIT License; see LICENSE file for more
 # details.
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "invenio-bulk-importer"
 description = "Bulk creation, import, and/or edittion of record and files for Invenio."
-keywords = ["invenio TODO"]
-license = {text = "MIT"}
 authors = [{name = "Ubiquity Press", email = "info@ubiquitypress.com"}]
-classifiers = ["Development Status :: 1 - Planning"]
-dynamic = ["readme", "version"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+   "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["invenio", "inveniordm", "rdm", "importer", "bulk"]
+license = {file = "LICENSE"}
+dynamic = ["version"]
+readme = "README.rst"
 requires-python = ">=3.10"
 dependencies = [
   "boto3>=1.26.0,<2.0",
   "google-cloud-storage>=2.8.0,<3.2",
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",
-  "invenio-rdm-records>=17.0.1,<18.0.0",
+  "invenio-rdm-records>=18.14.0,<19.0.0",
   "invenio-search[opensearch2]>=3.0.0,<4.0.0",
-  "marshmallow>=3.26.1",
+  "pydantic>=2.11.5",
 ]
-
-[build-system]
-requires = ["setuptools>=61.2"]
-build-backend = "setuptools.build_meta"
 
 [project.urls]
 Homepage = "https://github.com/ubiquitypress/invenio-bulk-importer"
@@ -53,50 +68,55 @@ include-package-data = true
 zip-safe = false
 platforms = ["any"]
 
-[tool.setuptools.packages]
-find = {namespaces = false}
 
-[tool.setuptools.dynamic]
-readme = {file = ["README.rst", "CHANGES.rst"]}
-version = {attr = "invenio_bulk_importer.__version__"}
+# Tools in alphabetical order
+[tool.babel.compile_catalog]
+directory = "invenio_bulk_importer/translations/"
+use_fuzzy = true
 
-[tool.build_sphinx]
-source-dir = "docs/"
-build-dir = "docs/_build"
-all_files = "1"
+[tool.babel.extract_messages]
+copyright_holder = "CERN"
+msgid_bugs_address = "info@inveniosoftware.org"
+mapping_file = "babel.ini"
+output_file = "invenio_bulk_importer/translations/messages.pot"
+add_comments = "NOTE"
 
-[tool.distutils.bdist_wheel]
-universal = 1
+[tool.babel.init_catalog]
+input_file = "invenio_bulk_importer/translations/messages.pot"
+output_dir = "invenio_bulk_importer/translations/"
 
-[tool.pydocstyle]
-add_ignore = "D401,D403"
+[tool.babel.javascript]
+"**.js" = { encoding = "utf-8", extract_messages = ["$_", "jQuery._"] }
+
+[tool.babel.jinja2]
+"**/templates/**.html" = { encoding = "utf-8" }
+
+[tool.babel.python]
+"**.py" = { encoding = "utf-8" }
+
+[tool.babel.update_catalog]
+input_file = "invenio_bulk_importer/translations/messages.pot"
+output_dir = "invenio_bulk_importer/translations/"
+
+[tool.hatch.version]
+path = "invenio_bulk_importer/__init__.py"
 
 [tool.isort]
 profile = "black"
 
-[tool.check-manifest]
-ignore = """
-*-requirements.txt"""
-
+[tool.pydocstyle]
+add_ignore = [
+    "D401",
+    "D403",
+]
 [tool.pytest.ini_options]
-addopts = '--black --isort --pydocstyle --doctest-glob="*.rst" --doctest-modules --cov=invenio_bulk_importer --cov-report=term-missing'
-testpaths = ["docs", "tests", "invenio_bulk_importer"]
-
-[tool.compile_catalog]
-directory = "invenio_bulk_importer/translations/"
-use-fuzzy = "True"
-
-[tool.extract_messages]
-copyright_holder = "Ubiquity Press"
-msgid_bugs_address = "esteban.gabancho@ubiquitypress.com"
-mapping-file = "babel.ini"
-output-file = "invenio_bulk_importer/translations/messages.pot"
-add-comments = "NOTE"
-
-[tool.init_catalog]
-input-file = "invenio_bulk_importer/translations/messages.pot"
-output-dir = "invenio_bulk_importer/translations/"
-
-[tool.update_catalog]
-input-file = "invenio_bulk_importer/translations/messages.pot"
-output-dir = "invenio_bulk_importer/translations/"
+minversion = "6.0"
+addopts = "--black --isort --pydocstyle --doctest-glob=\"*.rst\" --doctest-modules --cov=invenio_bulk_importer --cov-report=term-missing"
+testpaths = [
+    "docs",
+    "tests",
+    "invenio_bulk_importer",
+]
+filterwarnings = [
+    "ignore::marshmallow.warnings.RemovedInMarshmallow4Warning",
+]

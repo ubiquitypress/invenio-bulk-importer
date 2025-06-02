@@ -27,6 +27,8 @@ var/
 *.egg
 Pipfile
 Pipfile.lock
+.venv/
+uv.lock
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -62,3 +64,6 @@ target/
 
 # Vim swapfiles
 .*.sw?
+
+# VSCode
+.vscode/
