@@ -13,6 +13,7 @@ from collections import namedtuple
 import pytest
 from invenio_access.permissions import system_identity
 from invenio_app.factory import create_api
+from invenio_notifications.services.builders import NotificationBuilder
 from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
 from invenio_vocabularies.contrib.awards.api import Award
@@ -21,6 +22,7 @@ from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
 
+from invenio_bulk_importer.serializers.records.csv import CSVRDMRecordSerializer
 from invenio_bulk_importer.serializers.records.examples.custom_fields.imprint import (
     IMPRINT_CUSTOM_FIELDS,
 )
@@ -48,6 +50,23 @@ def app_config(app_config):
             {
                 "field": "imprint:imprint",
                 "transformer": "invenio_bulk_importer.serializers.records.examples.transformers.imprint_transform",
+            }
+        ]
+    }
+    app_config["BULK_IMPORTER_RECORD_TYPES"] = {
+        "rdm_record_type": {
+            "options": {
+                "doi_minting": False,
+                "publish": True,
+            },
+            "serializers": [CSVRDMRecordSerializer],
+        }
+    }
+    app_config["BULK_IMPORTER_SERIALIZERS"] = {
+        "csv_rdm_record_type": [
+            {
+                "csv": False,
+                "publish": True,
             }
         ]
     }

@@ -20,8 +20,5 @@ BULK_IMPORTER_BASE_TEMPLATE = "invenio_bulk_importer/base.html"
 BULK_IMPORTER_CUSTOM_FIELDS = {}
 """Custom fields for the importer."""
 
-BULK_IMPORTER_SERIALIZERS = {}
-"""List of serializers to be used by the importer."""
-
-BULK_IMPORTER_OPTIONS = {}
-"""List of serializers to be used by the importer."""
+BULK_IMPORTER_RECORD_TYPES = {}
+"""List of options and serializers to be used by the importer."""

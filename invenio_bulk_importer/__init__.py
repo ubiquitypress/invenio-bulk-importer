@@ -6,7 +6,7 @@
 # modify it under the terms of the MIT License; see LICENSE file for more
 # details.
 
-"""Bulk creation, import, and/or edittion of record and files for Invenio.."""
+"""Bulk creation, import, and/or edittion of record and files for Invenio."""
 
 from .ext import InvenioBulkImporter
 

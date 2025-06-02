@@ -18,6 +18,7 @@ from google.cloud import storage
 from invenio_communities.proxies import current_communities
 from invenio_files_rest.models import ObjectVersion
 from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records_resources.tasks import system_identity
 
 from invenio_bulk_importer.errors import Error
@@ -28,9 +29,9 @@ class RecordType(ABC):
 
     def __init__(self, serializer_data: tuple[dict | None, list[Error]]):
         """Initialize the record type."""
-        # self._files: list[str] = (
-        #     serializer_data[0].pop("files", []) if serializer_data[0] else []
-        # )
+        self.id: str | None = (
+            serializer_data[0].pop("id", None) if serializer_data[0] else None
+        )
         self._serializer_record_data: dict | None = (
             serializer_data[0] if serializer_data[0] else None
         )
@@ -206,3 +207,28 @@ class FileMixin:
                             msg=f"File '{file}' not found in invenio bucket.",
                         )
                     )
+
+
+class InvenioRecordMixin:
+    """Mixin to handle Invenio record-related operations."""
+
+    def _verify_record_exists(self, record_id: str) -> bool:
+        """Verify that the draft or published record exist."""
+        if not record_id:
+            return True  # No record ID provided, nothing to verify
+
+        try:
+            current_rdm_records_service.read(system_identity, record_id)
+        except Exception:
+            try:
+                current_rdm_records_service.read_draft(system_identity, record_id)
+            except Exception:
+                self._add_error(
+                    Error(
+                        type="existing_record_not_found",
+                        loc="record",
+                        msg=f"Record '{record_id}' not found.",
+                    )
+                )
+                return False
+        return True
