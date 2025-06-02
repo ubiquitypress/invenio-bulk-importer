@@ -45,7 +45,7 @@ def test_files_verification_s3_failures(rdm_record_instance):
         Error(
             type="file_not_accessible",
             loc="files",
-            msg="Error accessing S3 file 's3://service-rua/up/core/fixtures/key_help_garbage.json': An error occurred (404) when calling the HeadObject operation: Not Found",
+            msg="Error accessing S3 file 's3://service-rua/up/core/fixtures/key_help_garbage.json': An error occurred (403) when calling the HeadObject operation: Forbidden",
         )
     ]
 

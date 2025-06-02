@@ -13,6 +13,8 @@ from urllib.parse import urlparse
 
 import boto3
 import requests
+from botocore import UNSIGNED
+from botocore.client import Config
 from flask import current_app
 from google.cloud import storage
 from invenio_communities.proxies import current_communities
@@ -143,7 +145,7 @@ class FileMixin:
             bucket_name = parsed_url.netloc
             blob_name = parsed_url.path.lstrip("/")
 
-            storage_client = storage.Client()
+            storage_client = storage.Client.create_anonymous_client()
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
             if not blob.exists():
@@ -170,7 +172,10 @@ class FileMixin:
             bucket_name = parsed_url.netloc
             key = parsed_url.path.lstrip("/")
 
-            s3_client = boto3.client("s3")
+            s3_client = boto3.client(
+                "s3",
+                config=Config(signature_version=UNSIGNED),
+            )
             s3_client.head_object(Bucket=bucket_name, Key=key)
         except Exception as e:
             self._add_error(
