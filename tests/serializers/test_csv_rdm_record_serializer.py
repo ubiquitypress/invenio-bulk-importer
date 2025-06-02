@@ -247,6 +247,19 @@ def test_schema_without_custom_fields(running_app, csv_rdm_record):
     assert result["custom_fields"] == {}
 
 
+def test_schema_with_record_id(running_app, csv_rdm_record):
+    """Test validation without custom fields to see if it causes an issue."""
+    csv_rdm_record_with_id = deepcopy(csv_rdm_record)
+    csv_rdm_record_with_id["id"] = "1234567890abcdef"
+    serializer = CSVRDMRecordSerializer()
+    try:
+        result, errors = serializer.transform(csv_rdm_record_with_id)
+    except Exception:
+        raise
+    assert errors is None
+    assert result["id"] == "1234567890abcdef"
+
+
 def test_schema_missing_required_field(running_app, csv_rdm_record):
     """Test validation error when a required field is missing."""
     # Invalidate CSV input

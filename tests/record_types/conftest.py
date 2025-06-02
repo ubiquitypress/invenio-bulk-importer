@@ -14,10 +14,12 @@ from invenio_communities.communities.records.api import Community
 from invenio_communities.proxies import current_communities
 from invenio_files_rest.models import Bucket, ObjectVersion
 from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_rdm_records.proxies import current_rdm_records_service as record_service
+from invenio_rdm_records.records.api import RDMDraft, RDMRecord
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
 
-from invenio_bulk_importer.resources.rdm import RDMRecord
+from invenio_bulk_importer.record_types.rdm import RDMRecord as BulkImportRDMRecord
 
 
 @pytest.fixture
@@ -281,7 +283,7 @@ def serialized_record():
 @pytest.fixture
 def rdm_record_instance(bucket_with_object_version, serialized_record):
     """Fixture to create an RDMRecord instance."""
-    rdm_record = RDMRecord(
+    rdm_record = BulkImportRDMRecord(
         (
             serialized_record,
             None,
@@ -334,6 +336,64 @@ def community_type_record():
     Vocabulary.index.refresh()  # Refresh the index
 
     return record
+
+
+@pytest.fixture()
+def minimal_record():
+    """Minimal record data as dict coming from the external world."""
+    return {
+        "pids": {},
+        "files": {
+            "enabled": False,  # Most tests don't care about files
+        },
+        "metadata": {
+            "creators": [
+                {
+                    "person_or_org": {
+                        "family_name": "Howlett",
+                        "given_name": "James",
+                        "type": "personal",
+                    }
+                },
+            ],
+            "publication_date": "2020-06-01",
+            "publisher": "Acme Inc",
+            "resource_type": {"id": "dataset"},
+            "title": "Logan",
+        },
+    }
+
+
+@pytest.fixture()
+def record_owner(UserFixture, app, db):
+    """Record owner."""
+    u = UserFixture(
+        email="record_owner@up.up",
+        password="record_owner",
+    )
+    u.create(app, db)
+    return u
+
+
+@pytest.fixture()
+def record(running_app, record_owner, minimal_record, app_config):
+    """Create record using the minimal record fixture data."""
+    r = record_service.create(record_owner.identity, minimal_record)
+    r = record_service.publish(record_owner.identity, r.id)
+
+    RDMRecord.index.refresh()
+
+    return r
+
+
+@pytest.fixture()
+def draft(running_app, record_owner, minimal_record):
+    """Create record using the minimal record fixture data."""
+    r = record_service.create(record_owner.identity, minimal_record)
+
+    RDMDraft.index.refresh()
+
+    return r
 
 
 @pytest.fixture()

@@ -343,7 +343,6 @@ class MetadataSchema(BaseModel):
                 if person.get("role.id"):
                     creatibutor_dict["role"] = dict(id=person.get("role.id"))
                 output.append(creatibutor_dict)
-            print(output)
             return output
 
         values["creators"] = load_creatibutor(values, "creators")
@@ -406,6 +405,7 @@ class MetadataSchema(BaseModel):
 class CSVRecordSchema(BaseModel):
     """CSV RDM Record Pydantic schema."""
 
+    id: str = Field(default=None)
     pids: dict = Field(default_factory=dict, alias="doi")
     default_community: str = Field(default=None)
     communities: NewlineList

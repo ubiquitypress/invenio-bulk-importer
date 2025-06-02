@@ -466,3 +466,23 @@ def test_full_unsuccessful_validation_of_record_as_serialization_failed(
         ),
     ]
     assert rdm_record_instance._record is None
+
+
+def test_record_verification_draft_exists(rdm_record_instance, draft):
+    """Test that record are verified correctly."""
+    rdm_record_instance._verify_record_exists(draft.id)
+    assert rdm_record_instance.is_succssful is True
+    assert rdm_record_instance.errors == []
+
+
+def test_record_verification_no_record_or_draft_exists(rdm_record_instance):
+    """Test that record are verified correctly."""
+    rdm_record_instance._verify_record_exists("non-existing-id")
+    assert rdm_record_instance.is_succssful is False
+    assert rdm_record_instance.errors == [
+        Error(
+            type="existing_record_not_found",
+            loc="record",
+            msg="Record 'non-existing-id' not found.",
+        ),
+    ]

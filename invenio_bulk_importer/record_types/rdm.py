@@ -13,10 +13,15 @@ from invenio_records_resources.tasks import system_identity
 from marshmallow.exceptions import ValidationError as MarshmallowValidationError
 
 from invenio_bulk_importer.errors import Error
-from invenio_bulk_importer.resources.base import CommunityMixin, FileMixin, RecordType
+from invenio_bulk_importer.record_types.base import (
+    CommunityMixin,
+    FileMixin,
+    InvenioRecordMixin,
+    RecordType,
+)
 
 
-class RDMRecord(CommunityMixin, FileMixin, RecordType):
+class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
     """RDM Record validation and loading class."""
 
     def __init__(
@@ -103,6 +108,7 @@ class RDMRecord(CommunityMixin, FileMixin, RecordType):
                 )
             )
             return False
+        self._verify_record_exists(self.id)
         self._verify_files_accessible(self._files)
         self._verify_communities_exist(self._serializer_communities)
         self._verify_rdm_record_correctness(self._serializer_record_data)
