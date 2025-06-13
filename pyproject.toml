@@ -65,6 +65,10 @@ invenio_bulk_importer = "invenio_bulk_importer:alembic"
 [project.entry-points."invenio_db.models"]
 invenio_bulk_importer = "invenio_bulk_importer.records.models"
 
+[project.entry-points."invenio_search.mappings"]
+importertasks = "invenio_bulk_importer.records.mappings"
+importerrecords = "invenio_bulk_importer.records.mappings"  
+
 [project.entry-points."invenio_i18n.translations"]
 messages = "invenio_bulk_importer"
 
