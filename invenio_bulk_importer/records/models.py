@@ -46,6 +46,7 @@ class ImporterRecordModel(db.Model, RecordMetadataBase):
     """Model for importer record."""
 
     __tablename__ = "importer_records_metadata"
+    id = db.Column(UUIDType, primary_key=True, default=uuid.uuid4)
 
     task_id = db.Column(
         UUIDType, db.ForeignKey(ImporterTaskModel.id, ondelete="CASCADE")

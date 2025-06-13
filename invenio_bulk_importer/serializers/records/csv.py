@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2024 Ubiquity Press
+# Copyright (C) 2025 Ubiquity Press
 #
 # Invenio-Bulk-Importer is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -22,9 +22,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_core import PydanticCustomError
 
-from invenio_bulk_importer.errors import Error
 from invenio_bulk_importer.serializers.base import CSVSerializer
 from invenio_bulk_importer.serializers.records.utils import (
     generate_error_messages,
@@ -37,7 +35,9 @@ def ensure_new_line_list(value: str) -> list:
     """Ensure CSV column is converted into a list."""
     if value is None:
         return []
-    return [v.strip() for v in value.split("\n")]
+    output = [v.strip() for v in value.split("\n")]
+    # Remove empty strings from the list
+    return [v for v in output if v]
 
 
 # Custom field to handle newline-separated lists
@@ -81,6 +81,12 @@ class FullIdentifier(BaseIdentifier):
     relation_type: dict[str, str | None] = Field(default_factory=dict)
 
 
+class Role(BaseModel):
+    """Schema for role."""
+
+    id: str
+
+
 class Affiliation(BaseModel):
     """Schema for affiliation."""
 
@@ -93,15 +99,25 @@ class PersonOrOrg(BaseModel):
 
     family_name: str | None = Field(default=None)
     given_name: str | None = Field(default=None)
-    name: str | None = None
+    name: str | None = Field(default=None)
     type: Literal["personal", "organizational"]
     identifiers: list[BaseIdentifier] = Field(default_factory=list)
 
 
-CreatibutorList = Annotated[
-    list[dict[str, PersonOrOrg | list[Affiliation] | dict[str, str]]],
-    Field(default_factory=list),
-]
+class Creator(BaseModel):
+    """Schema for creator."""
+
+    person_or_org: PersonOrOrg
+    affiliations: list[Affiliation] = Field(default_factory=list)
+    role: Role | None = Field(default=None)
+
+
+class Contributor(BaseModel):
+    """Schema for contributor."""
+
+    person_or_org: PersonOrOrg
+    affiliations: list[Affiliation] = Field(default_factory=list)
+    role: Role
 
 
 class MetadataSchema(BaseModel):
@@ -123,8 +139,8 @@ class MetadataSchema(BaseModel):
     )
     languages: list[dict[str, str]] = Field(default_factory=list, alias="languages.id")
     locations: Location | dict = Field(default_factory=dict)
-    creators: CreatibutorList
-    contributors: CreatibutorList
+    creators: list[Creator] = Field(min_length=1)
+    contributors: list[Contributor] = Field(default_factory=list)
     subjects: list[dict[str, str]] = Field(default_factory=list)
     references: list[dict[str, str]] = Field(
         default_factory=list, alias="references.reference"
@@ -349,58 +365,6 @@ class MetadataSchema(BaseModel):
         values["contributors"] = load_creatibutor(values, "contributors")
         return values
 
-    @model_validator(mode="wrap")
-    def additional_validation(cls, values, handler):
-        """Wrap the validation process to add additional checks."""
-        errors = []
-        result = None
-        # Run the default validation first
-        if not isinstance(values, dict):
-            # second tie around wrap after all before and after validations
-            return handler(values)
-
-        try:
-            result = handler(values)
-        except ValidationError as e:
-            # Collect existing validation errors
-            errors.extend(e.errors())
-        # Add custom validation logic
-        creators = values.get("creators") if errors else result.creators
-        if not creators:
-            creators_missing_error = PydanticCustomError(
-                "no_creators_error", "Need at least one creator to be present.", {}
-            )
-            errors.append(
-                {
-                    "loc": (
-                        "creators.type",
-                        "creators.given_name",
-                        "creators.family_name",
-                        "creators.name",
-                        "creators.identifiers.*",
-                        "creators.affiliations.*",
-                    ),
-                    "type": creators_missing_error,
-                    "msg": "Need at least one creator to be present.",
-                }
-            )
-
-        # If there are any errors, raise a new ValidationError
-        if errors:
-            formatted_errors = []
-            for e in errors:
-                formatted_errors.append(
-                    {
-                        "loc": e["loc"],
-                        "msg": e["msg"],
-                        "type": e["type"],
-                        "ctx": e.get("ctx", {}),
-                    }
-                )
-            raise ValidationError.from_exception_data(cls.__name__, formatted_errors)
-
-        return result
-
 
 class CSVRecordSchema(BaseModel):
     """CSV RDM Record Pydantic schema."""
@@ -461,7 +425,7 @@ class CSVRecordSchema(BaseModel):
 class CSVRDMRecordSerializer(CSVSerializer):
     """Serializer for RDM records."""
 
-    def transform(self, obj: dict) -> tuple[dict | None, list[Error] | None]:
+    def transform(self, obj: dict) -> tuple[dict | None, list[dict] | None]:
         """Transform the input object into a CSV-compatible format.
 
         Args:

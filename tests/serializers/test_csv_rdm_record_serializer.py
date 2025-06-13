@@ -1,11 +1,7 @@
 from copy import deepcopy
 
-import pytest
-from pydantic import ValidationError
-
 from invenio_bulk_importer.serializers.records.csv import (
     CSVRDMRecordSerializer,
-    CSVRecordSchema,
 )
 
 
@@ -266,10 +262,10 @@ def test_schema_missing_required_field(running_app, csv_rdm_record):
     csv_rdm_record["title"] = ""
     csv_rdm_record["publication_date"] = ""
     csv_rdm_record["resource_type.id"] = ""
+    csv_rdm_record["contributors.role.id"] = ""
     for key in csv_rdm_record.keys():
         if key.startswith("creators."):
             csv_rdm_record[key] = ""
-
     serializer = CSVRDMRecordSerializer()
     try:
         result, errors = serializer.transform(csv_rdm_record)
@@ -280,38 +276,32 @@ def test_schema_missing_required_field(running_app, csv_rdm_record):
     expected_errors = [
         {
             "type": "string_too_short",
-            "loc": ("title",),
+            "loc": "title",
             "msg": "String should have at least 1 character",
         },
         {
             "type": "string_too_short",
-            "loc": ("publication_date",),
+            "loc": "publication_date",
             "msg": "String should have at least 1 character",
         },
         {
             "type": "value_error",
-            "loc": ("resource_type.id",),
+            "loc": "resource_type.id",
             "msg": "Value error, Missing 'resource_type.id'",
         },
         {
-            "type": "no_creators_error",
-            "loc": (
-                "creators.type",
-                "creators.given_name",
-                "creators.family_name",
-                "creators.name",
-                "creators.identifiers.*",
-                "creators.affiliations.*",
-            ),
-            "msg": "Need at least one creator to be present.",
+            "type": "too_short",
+            "loc": "creators",
+            "msg": "List should have at least 1 item after validation, not 0",
         },
+        {"type": "missing", "loc": "contributors.0.role", "msg": "Field required"},
     ]
     # Check that each expected error is in the actual errors
     for expected_error in expected_errors:
         assert any(
-            expected_error["type"] == error.type
-            and expected_error["loc"] == error.loc
-            and expected_error["msg"] == error.msg
+            expected_error["type"] == error["type"]
+            and expected_error["loc"] == error["loc"]
+            and expected_error["msg"] == error["msg"]
             for error in errors
         ), f"Expected error not found: {expected_error}"
 

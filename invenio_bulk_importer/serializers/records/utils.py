@@ -9,11 +9,6 @@
 """Serializer utils module."""
 
 
-from dataclasses import asdict
-
-from invenio_bulk_importer.errors import Error
-
-
 def process_grouped_fields_via_column_title(
     original: dict, group_prefix: str, main_key: str
 ) -> dict:
@@ -93,7 +88,7 @@ def process_grouped_fields(original: dict, prefix: str) -> list:
     return output
 
 
-def generate_error_messages(errors: list) -> list[Error]:
+def generate_error_messages(errors: list) -> list[dict]:
     """Generate error messages from a list of errors.
 
     Args:
@@ -104,6 +99,10 @@ def generate_error_messages(errors: list) -> list[Error]:
     error_messages = []
     for error in errors:
         error_messages.append(
-            Error(type=error["type"], loc=tuple(error["loc"]), msg=error["msg"])
+            dict(
+                type=error["type"],
+                loc=".".join(str(item) for item in error["loc"]),
+                msg=error["msg"],
+            )
         )
     return error_messages
