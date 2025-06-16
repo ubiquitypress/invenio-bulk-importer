@@ -415,11 +415,50 @@ def test_verify_serialized_data_is_invalid(rdm_record_instance):
     ]
 
 
-def test_full_successful_validation_of_record(rdm_record_instance, community):
+def test_full_successful_validation_of_record(valid_rdm_record_instance, community):
+    """Test that a full validation of the record is successful."""
+    valid_rdm_record_instance.validate()
+    assert valid_rdm_record_instance.is_successful is True
+    assert valid_rdm_record_instance.errors == []
+    assert valid_rdm_record_instance._record
+
+
+def test_unsuccessful_pre_commit_validation_of_record(rdm_record_instance, community):
     """Test that a full validation of the record is successful."""
     rdm_record_instance.validate()
-    assert rdm_record_instance.is_successful is True
-    assert rdm_record_instance.errors == []
+    assert rdm_record_instance.is_successful is False
+    assert rdm_record_instance.errors == [
+        {
+            "loc": "relations.resource_type",
+            "msg": "Invalid value publication.",
+            "type": "pre_commit_validation_error",
+        },
+        {
+            "loc": "relations.licenses",
+            "msg": "Invalid value cc0-1.0.",
+            "type": "pre_commit_validation_error",
+        },
+        {
+            "loc": "relations.related_identifiers",
+            "msg": "Invalid value publication-article.",
+            "type": "pre_commit_validation_error",
+        },
+        {
+            "loc": "relations.contributors_role",
+            "msg": "Invalid value editor.",
+            "type": "pre_commit_validation_error",
+        },
+        {
+            "loc": "relations.description_type",
+            "msg": "Invalid value abstract.",
+            "type": "pre_commit_validation_error",
+        },
+        {
+            "loc": "relations.relation_types",
+            "msg": "Invalid value ispartof.",
+            "type": "pre_commit_validation_error",
+        },
+    ]
     assert rdm_record_instance._record
 
 

@@ -72,6 +72,32 @@ def validated_rdm_record_instance(valid_importer_record):
 
 
 @pytest.fixture
+def valid_serialized_record(serialized_record):
+    """Fixture to create a valid serialized record."""
+    serialized_record["metadata"]["resource_type"]["id"] = "dataset"
+    serialized_record["metadata"]["rights"][0]["id"] = "cc-by-4.0"
+    serialized_record["metadata"]["contributors"][0]["role"]["id"] = "datamanager"
+    serialized_record["metadata"]["additional_descriptions"] = [
+        {"description": "abstract", "type": {"id": "methods"}}
+    ]
+    serialized_record["metadata"]["related_identifiers"] = [
+        {
+            "identifier": "10.1080/10509585.2015.1092083",
+            "scheme": "doi",
+            "relation_type": {"id": "iscitedby"},
+            "resource_type": {"id": "dataset"},
+        },
+        {
+            "identifier": "arXiv:2305.12345",
+            "scheme": "arxiv",
+            "relation_type": {"id": "iscitedby"},
+            "resource_type": {"id": "dataset"},
+        },
+    ]
+    return serialized_record
+
+
+@pytest.fixture
 def serialized_record():
     """Fixture to create a serialized record."""
     return {
@@ -319,6 +345,19 @@ def rdm_record_instance(bucket_with_object_version, serialized_record):
     rdm_record = BulkImportRDMRecord(
         (
             serialized_record,
+            None,
+        ),
+        bucket_with_object_version.id,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def valid_rdm_record_instance(bucket_with_object_version, valid_serialized_record):
+    """Fixture to create an RDMRecord instance."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            valid_serialized_record,
             None,
         ),
         bucket_with_object_version.id,

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2024 Ubiquity Press
+# Copyright (C) 2025 Ubiquity Press
 #
 # Invenio-Bulk-Importer is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -64,10 +64,6 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                 context={"identity": system_identity},
                 raise_errors=True,
             )
-            # record = record_cls(self._record)
-            # for e in record._extensions:
-            #     e.pre_commit(record)
-            # json = self._validate(format_checker=format_checker, validator=validator)
         except MarshmallowValidationError as e:
             self._process_validation_errors(e.messages, prefix="")
 
@@ -128,6 +124,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         self._verify_files_accessible(self._files)
         self._verify_communities_exist(self._serializer_communities)
         self._verify_rdm_record_correctness(self._serializer_record_data)
+        self._verify_pre_commit_correctness(self._record)
         return self.is_successful
 
     def run(self) -> dict | None:
@@ -183,9 +180,12 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         record = None
         try:
             record = current_rdm_records_service.create(
-                system_identity, data=importer_record["transformed_data"], uow=uow
+                system_identity,
+                data=importer_record["transformed_data"],
+                uow=uow,
             )
         except Exception as e:
+            traceback.print_exc()
             self._add_error(
                 dict(
                     type="record_creation_error",
@@ -246,10 +246,16 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             )
             raise
 
-    def _add_record_to_communities(
-        self, community_uuids: list[str], record, uow
-    ) -> None:
-        """Add the record to the specified community."""
+    def _add_record_to_communities(self, community_uuids: dict, record, uow) -> None:
+        """Add the record to the specified community.
+
+        If community_uuids is empty then the record will be published.
+
+        Args:
+            community_uuids (dict): Dictionary containing community UUIDs.
+            record (RDMRecord): The record to be added to the community.
+            uow: Unit of Work for database operations.
+        """
         for community_id in community_uuids["ids"]:
             try:
                 data = {

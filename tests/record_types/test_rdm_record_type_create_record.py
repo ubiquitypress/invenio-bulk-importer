@@ -1,3 +1,5 @@
+from flask_security import login_user
+from invenio_accounts.proxies import current_datastore
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records import RDMDraft, RDMRecord
@@ -16,11 +18,11 @@ def assert_counts(buckets=0, objs=0, fileinstances=0, drafts=0, records=0):
 def test_publish_record_with_files_into_a_community(
     app, db, user_admin, validated_rdm_record_instance_with_community, search_clear
 ):
+    """Test publishing a record with files into a community."""
     assert_counts(buckets=2, objs=2, fileinstances=2)
     record = validated_rdm_record_instance_with_community.run()
     RDMDraft.index.refresh()
     RDMRecord.index.refresh()
-    print(validated_rdm_record_instance_with_community.errors)
     assert record
     assert_counts(buckets=4, objs=6, fileinstances=6, drafts=1, records=1)
     all_records = current_rdm_records_service.search(user_admin.identity)

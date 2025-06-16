@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2024 Ubiquity Press
+# Copyright (C) 2025 Ubiquity Press
 #
 # Invenio-Bulk-Importer is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -18,12 +18,15 @@ from botocore.client import Config
 from flask import current_app
 from google.cloud import storage
 from invenio_communities.proxies import current_communities
+from invenio_db import db
 from invenio_files_rest.models import ObjectVersion
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.records import RDMDraft
 from invenio_records_resources.tasks import system_identity
 
 from ..proxies import current_importer_tasks_service as tasks_service
+from .uow import rollabck_unit_of_work
 
 
 class RecordType(ABC):
@@ -383,3 +386,64 @@ class InvenioRecordMixin:
                 )
                 return False
         return True
+
+    @rollabck_unit_of_work()
+    def _verify_pre_commit_correctness(
+        self, record_data, record_id: str = None, uow=None
+    ) -> bool:
+        """Check pre-create validations for the record."""
+        data = record_data
+        with db.session.begin_nested():
+            # Create the record and the model so we can checkpre-commit validations for relations
+            record = RDMDraft(data, model=RDMDraft.model_cls(id=record_id, data=data))
+            # Run pre create extensions
+            for e in RDMDraft._extensions:
+                # This requires to get all systemfields in api record schema.
+                # So we can get the MultiRelationsField which holds a RelationsMapping that  has a list of fields
+                # We will validate each, if we use the MultiRelationsField.pre_commit() it will excpetion on the first failure
+                # instead of running through all the fields.
+                try:
+                    e.pre_create(record)
+                except Exception as e:
+                    self._add_error(
+                        dict(
+                            type="pre_create_validation_error",
+                            loc="record",
+                            msg=str(e),
+                        )
+                    )
+                try:
+                    e.post_create(record)
+                except Exception as e:
+                    self._add_error(
+                        dict(
+                            type="post_create_validation_error",
+                            loc="record",
+                            msg=str(e),
+                        )
+                    )
+                if "relations" in e.declared_fields:
+                    field = e.declared_fields["relations"]
+                    mapping = field.obj(record)
+                    for name in mapping._fields:
+                        try:
+                            getattr(mapping, name).validate()
+                        except Exception as e:
+                            self._add_error(
+                                dict(
+                                    type="pre_commit_validation_error",
+                                    loc=f"relations.{name}",
+                                    msg=str(e),
+                                )
+                            )
+                else:
+                    try:
+                        e.pre_commit(record)
+                    except Exception as e:
+                        self._add_error(
+                            dict(
+                                type="pre_commit_validation_error",
+                                loc="record",
+                                msg=str(e),
+                            )
+                        )

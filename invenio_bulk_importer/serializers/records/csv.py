@@ -77,7 +77,7 @@ class BaseIdentifier(BaseModel):
 class FullIdentifier(BaseIdentifier):
     """Schema for full identifiers."""
 
-    resource_type: dict[str, str | None] = Field(default=None)
+    resource_type: dict[str, str | None] = Field(default_factory=dict)
     relation_type: dict[str, str | None] = Field(default_factory=dict)
 
 

@@ -83,7 +83,7 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error loading importer record: {e}")
+        print(f"Error run_transformed_record: {e}")
         # Handle error appropriately, e.g., log it or update task status
         raise e
 
@@ -128,7 +128,7 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error loading importer record: {e}")
+        print(f"Error validate_serialized_data: {e}")
         # Handle error appropriately, e.g., log it or update task status
         raise e
 
