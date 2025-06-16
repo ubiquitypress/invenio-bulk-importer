@@ -12,8 +12,6 @@ import csv
 from abc import ABC, abstractmethod
 from typing import IO, Iterator
 
-from invenio_bulk_importer.errors import Error
-
 
 class Serializer(ABC):
     """Base serializer class."""
@@ -26,7 +24,7 @@ class Serializer(ABC):
         """
 
     @abstractmethod
-    def transform(self, obj: dict) -> tuple[dict | None, list[Error] | None]:
+    def transform(self, obj: dict) -> tuple[dict | None, list[dict] | None]:
         """Transform a given object into dict Invenio understands."""
 
 

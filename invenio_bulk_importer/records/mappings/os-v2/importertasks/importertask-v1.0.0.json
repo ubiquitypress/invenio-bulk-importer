@@ -1,0 +1,81 @@
+{
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+         "created": {
+          "type": "date"
+        },
+        "updated": {
+          "type": "date"
+        },
+        "indexed_at": {
+          "type": "date"
+        },
+        "id": {
+          "type": "keyword"
+        },
+        "uuid": {
+          "type": "keyword"
+        },
+        "version_id": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "keyword"
+        },
+        "description": {
+          "type": "text"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "mode": {
+          "type": "keyword"
+        },
+        "record_type": {
+          "type": "keyword"
+        },
+        "serializer": {
+          "type": "keyword"
+        },
+        "records_status": {
+          "type": "object",
+          "dynamic": true
+        },
+        "start_time": {
+          "type": "date"
+        },
+        "end_time": {
+          "type": "date"
+        },
+        "started_by_id": {
+          "type": "keyword"
+        },
+        "started_by": {
+          "type": "object",
+          "properties": {
+            "@v": {
+              "type": "keyword"
+            },
+            "id": {
+              "type": "keyword"
+            },
+            "username": {
+              "type": "keyword"
+            },
+            "email": {
+              "type": "keyword"
+            }
+          }
+        },
+        "files": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }

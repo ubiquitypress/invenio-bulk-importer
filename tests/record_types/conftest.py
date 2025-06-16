@@ -9,15 +9,9 @@
 """Fixtures for testing Invenio RDM Record resources."""
 
 import pytest
-from invenio_access.permissions import system_identity
-from invenio_communities.communities.records.api import Community
-from invenio_communities.proxies import current_communities
 from invenio_files_rest.models import Bucket, ObjectVersion
-from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_rdm_records.proxies import current_rdm_records_service as record_service
 from invenio_rdm_records.records.api import RDMDraft, RDMRecord
-from invenio_vocabularies.proxies import current_service as vocabulary_service
-from invenio_vocabularies.records.api import Vocabulary
 
 from invenio_bulk_importer.record_types.rdm import RDMRecord as BulkImportRDMRecord
 
@@ -36,6 +30,71 @@ def bucket_with_object_version(db, location):
     assert object_versions[0].key == "README.rst"
 
     return b1
+
+
+@pytest.fixture
+def validated_rdm_record_instance_with_community(valid_importer_record_with_community):
+    """Fixture to create an RDMRecord instance, with community."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            None,
+            None,
+        ),
+        importer_record=valid_importer_record_with_community._obj,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def validated_rdm_record_instance_no_files(valid_importer_record_no_files):
+    """Fixture to create an RDMRecord instance."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            None,
+            None,
+        ),
+        importer_record=valid_importer_record_no_files._obj,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def validated_rdm_record_instance(valid_importer_record):
+    """Fixture to create an RDMRecord instance."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            None,
+            None,
+        ),
+        importer_record=valid_importer_record._obj,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def valid_serialized_record(serialized_record):
+    """Fixture to create a valid serialized record."""
+    serialized_record["metadata"]["resource_type"]["id"] = "dataset"
+    serialized_record["metadata"]["rights"][0]["id"] = "cc-by-4.0"
+    serialized_record["metadata"]["contributors"][0]["role"]["id"] = "datamanager"
+    serialized_record["metadata"]["additional_descriptions"] = [
+        {"description": "abstract", "type": {"id": "methods"}}
+    ]
+    serialized_record["metadata"]["related_identifiers"] = [
+        {
+            "identifier": "10.1080/10509585.2015.1092083",
+            "scheme": "doi",
+            "relation_type": {"id": "iscitedby"},
+            "resource_type": {"id": "dataset"},
+        },
+        {
+            "identifier": "arXiv:2305.12345",
+            "scheme": "arxiv",
+            "relation_type": {"id": "iscitedby"},
+            "resource_type": {"id": "dataset"},
+        },
+    ]
+    return serialized_record
 
 
 @pytest.fixture
@@ -293,49 +352,17 @@ def rdm_record_instance(bucket_with_object_version, serialized_record):
     return rdm_record
 
 
-@pytest.fixture()
-def minimal_community():
-    """Minimal community data."""
-    return {
-        "slug": "test-community",
-        "access": {
-            "visibility": "public",
-            "review_policy": "open",
-        },
-        "metadata": {
-            "title": "Test community",
-            "type": {"id": "topic"},
-            "page": "test-page",
-        },
-    }
-
-
-@pytest.fixture()
-def community_owner(UserFixture, app, db):
-    """Community owner."""
-    u = UserFixture(
-        email="community_owner@up.up",
-        password="community_owner",
+@pytest.fixture
+def valid_rdm_record_instance(bucket_with_object_version, valid_serialized_record):
+    """Fixture to create an RDMRecord instance."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            valid_serialized_record,
+            None,
+        ),
+        bucket_with_object_version.id,
     )
-    u.create(app, db)
-    return u
-
-
-@pytest.fixture()
-def community_type_record():
-    """Create and retrieve community type records."""
-    vocabulary_service.create_type(system_identity, "communitytypes", "comtyp")
-    record = vocabulary_service.create(
-        identity=system_identity,
-        data={
-            "id": "topic",
-            "title": {"en": "Topic"},
-            "type": "communitytypes",
-        },
-    )
-    Vocabulary.index.refresh()  # Refresh the index
-
-    return record
+    return rdm_record
 
 
 @pytest.fixture()
@@ -394,18 +421,3 @@ def draft(running_app, record_owner, minimal_record):
     RDMDraft.index.refresh()
 
     return r
-
-
-@pytest.fixture()
-def community(running_app, community_type_record, community_owner, minimal_community):
-    """Create community using the minimal fixture data."""
-    slug = minimal_community["slug"]
-    try:
-        c = current_communities.service.record_cls.pid.resolve(slug)
-    except PIDDoesNotExistError:
-        c = current_communities.service.create(
-            community_owner.identity,
-            minimal_community,
-        )
-        Community.index.refresh()
-    return c
