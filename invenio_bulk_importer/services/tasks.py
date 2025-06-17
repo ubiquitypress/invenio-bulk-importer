@@ -83,7 +83,27 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error run_transformed_record: {e}")
+        print(f"Error run_transformed_record for record/task: {record_id_str}/{task_id_str}:- {e}")
+        # Handle error appropriately, e.g., log it or update task status
+        raise e
+
+
+@shared_task(ignore_result=True)
+def run_transformed_records(task_id_str: str, status_list: list[str] = None):
+    """Load importer metadata for a record type using a specific serializer."""
+    try:
+        task, _, _ = _get_importer_task_classes(task_id_str)
+        # Validate entries from the metadata file
+        for record_id_str in task.get_records(status_list=status_list):
+            run_transformed_record.delay(
+                record_id_str=record_id_str,
+                task_id_str=task_id_str,
+            )
+        # Update task status to indicate that the file has been processed
+        finalize_importer_task.delay(task_id_str)
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Error run_transformed_records for task: {task_id_str}:- {e}")
         # Handle error appropriately, e.g., log it or update task status
         raise e
 
@@ -122,19 +142,21 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
             importer_record_dict["validated_record_files"] = (
                 rdm_record.validated_record_file_list
             )
+            # Exisitng Record ID
+            importer_record_dict["existing_record_id"] = rdm_record.id
         # Update the importer record with the validation results
         records_service.update(
             system_identity, data=importer_record_dict, id_=record.id
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error validate_serialized_data: {e}")
+        print(f"Error validate_serialized_data for record/task: {record_id_str}/{task_id_str}:- {e}")
         # Handle error appropriately, e.g., log it or update task status
         raise e
 
 
 @shared_task(ignore_result=True)
-def load_importer_file(task_id_str: str):
+def valid_importer_file_data(task_id_str: str):
     """Load importer metadata for a record type using a specific serializer."""
     try:
         task, _, serializer = _get_importer_task_classes(task_id_str)
@@ -158,7 +180,7 @@ def load_importer_file(task_id_str: str):
         finalize_importer_task.delay(task_id_str)
     except Exception as e:
         traceback.print_exc()
-        print(f"Error loading importer file: {e}")
+        print(f"Error loading importer file for task: {task_id_str}:- {e}")
         # Handle error appropriately, e.g., log it or update task status
         raise e
 

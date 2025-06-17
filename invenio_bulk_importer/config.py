@@ -8,6 +8,9 @@
 
 """Bulk creation, import, and/or edittion of record and files for Invenio.."""
 
+from invenio_i18n import lazy_gettext as _
+
+
 # TODO: This is an example file. Remove it if your package does not use any
 # extra configuration variables.
 
@@ -22,3 +25,55 @@ BULK_IMPORTER_CUSTOM_FIELDS = {}
 
 BULK_IMPORTER_RECORD_TYPES = {}
 """List of options and serializers to be used by the importer."""
+
+
+#
+# Importer tasks Search configuration
+#
+BULK_IMPORTER_TASKS_FACETS = {}
+
+BULK_IMPORTER_TASKS_SORT_OPTIONS = {
+    "bestmatch": dict(
+        title=_("Best match"),
+        fields=["_score"],  # ES defaults to desc on `_score` field
+    ),
+    "newest": dict(
+        title=_("Newest"),
+        fields=["-created"],
+    ),
+    "oldest": dict(
+        title=_("Oldest"),
+        fields=["created"],
+    ),
+}
+
+BULK_IMPORTER_TASKS_SEARCH = {
+    "facets": [],
+    "sort": ["bestmatch", "newest", "oldest"],
+}
+
+
+#
+# Importer records Search configuration
+#
+BULK_IMPORTER_RECORDS_FACETS = {}
+
+BULK_IMPORTER_RECORDS_SORT_OPTIONS = {
+    "bestmatch": dict(
+        title=_("Best match"),
+        fields=["_score"],  # ES defaults to desc on `_score` field
+    ),
+    "newest": dict(
+        title=_("Newest"),
+        fields=["-created"],
+    ),
+    "oldest": dict(
+        title=_("Oldest"),
+        fields=["created"],
+    ),
+}
+
+BULK_IMPORTER_RECORDS_SEARCH = {
+    "facets": [],
+    "sort": ["bestmatch", "newest", "oldest"],
+}

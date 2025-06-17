@@ -56,6 +56,14 @@ invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
 [project.entry-points."invenio_base.api_apps"]
 invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
 
+[project.entry-points."invenio_base.api_blueprints"]
+invenio_bulk_importer_ext = "invenio_bulk_importer.views:blueprint"
+invenio_bulk_importer_tasks_api = "invenio_bulk_importer.views:create_tasks_bp"
+invenio_bulk_importer_records_api = "invenio_bulk_importer.views:create_records_bp"
+
+[project.entry-points."invenio_base.blueprints"]
+invenio_bulk_importer_ext = "invenio_bulk_importer.views:blueprint"
+
 [project.entry-points."invenio_celery.tasks"]
 invenio_bulk_importer = "invenio_bulk_importer.tasks"
 

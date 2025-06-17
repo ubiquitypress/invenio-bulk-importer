@@ -1,5 +1,3 @@
-from flask_security import login_user
-from invenio_accounts.proxies import current_datastore
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records import RDMDraft, RDMRecord
