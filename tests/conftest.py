@@ -72,8 +72,9 @@ def clear_cache(app):
 
 
 @pytest.fixture(scope="module")
-def create_app():
+def create_app(instance_path, entry_points):
     """Create app."""
+    print(entry_points)
     return create_api
 
 
@@ -151,6 +152,10 @@ def app_config(app_config, mock_datacite_client):
             label=_("Concept DOI"),
         ),
     ]
+    app_config["APP_RDM_ROUTES"] = {
+        "record_detail": "/records/<pid_value>",
+        "record_file_download": "/records/<pid_value>/files/<path:filename>",
+    }
     return app_config
 
 

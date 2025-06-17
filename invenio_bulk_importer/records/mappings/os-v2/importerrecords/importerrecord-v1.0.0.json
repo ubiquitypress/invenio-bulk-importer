@@ -51,6 +51,9 @@
           "properties": {
           }
         },
+        "existing_record_id": {
+          "type": "keyword"
+        },
         "generated_record_id": {
           "type": "keyword"
         },

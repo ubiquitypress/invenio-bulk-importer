@@ -140,6 +140,23 @@ class ImporterTask(Record):
         records_info["total_records"] = sum(records_info.values())
         return records_info
 
+    def get_records(self, status_list: list[str] = []) -> list[str]:
+        """Get all importer records ids related to this task.
+
+        Args:
+            status (str, optional): Filter records by status. Defaults to None.
+        Returns:
+            list[str]: List of record ids as strings.
+        """
+        record_model_class = self.child_record_model_cls
+        query = db.session.query(record_model_class.id).filter(
+            record_model_class.task_id == self.id
+        )
+        if status_list:
+            query = query.filter(record_model_class.status.in_(status_list))
+        records_info = query.all()
+        return [str(id) for (id,) in records_info]
+
 
 class ImporterRecord(Record):
     """Importer Record record."""

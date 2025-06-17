@@ -197,6 +197,10 @@ class ImporterRecordSchema(InvenioBaseRecordSchema):
         allow_none=True,
         description="List of validated files with key, size and origin.",
     )
+    existing_record_id = ma.fields.String(
+        allow_none=True,
+        description="Existing record ID if the import is updating an existing record.",
+    )
     generated_record_id = ma.fields.String(
         allow_none=True,
         description="Generated record ID after successful import.",

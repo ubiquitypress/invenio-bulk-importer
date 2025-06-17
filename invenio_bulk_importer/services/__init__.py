@@ -5,9 +5,11 @@ from .config import (
     ImporterTaskFileServiceConfig,
     ImporterTaskServiceConfig,
 )
-from .services import ImporterTaskService
+from .services import ImporterRecordService, ImporterTaskService
 
 __all__ = (
+    "ImporterRecordService",
+    "ImporterRecordServiceConfig",
     "ImporterTaskService",
     "ImporterTaskServiceConfig",
     "ImporterTaskFileServiceConfig",

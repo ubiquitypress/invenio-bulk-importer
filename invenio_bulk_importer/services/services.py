@@ -9,6 +9,7 @@
 """Bulk Importer Services."""
 import os
 from copy import deepcopy
+from flask import current_app
 
 from invenio_records_resources.services.records import RecordService
 from invenio_records_resources.services.uow import (
@@ -16,7 +17,11 @@ from invenio_records_resources.services.uow import (
     unit_of_work,
 )
 
-from .tasks import load_importer_file, run_transformed_record
+from .tasks import (
+    valid_importer_file_data,
+    run_transformed_record,
+    run_transformed_records,
+)
 
 
 class BulkImporterMixin:
@@ -60,9 +65,25 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         self, identity, id_, filename, stream, content_length=None, uow=None
     ):
         """Update the importer task metadata file."""
-        # get the file extesion from filename
+        self.require_permission(identity, "create")
         extension = self._get_file_extension(filename)
         return self._update_file(identity, id_, stream, "metadata", extension, uow=uow)
+
+    def get_record_types(self, identity):
+        """Get the available record types for usage in importer task."""
+        self.require_permission(identity, "create")
+        record_types = current_app.config["BULK_IMPORTER_RECORD_TYPES"]
+        return list(record_types.keys())
+
+    def get_record_type_config(self, identity, record_type_str):
+        """Get the available serializers for a specific record type."""
+        self.require_permission(identity, "create")
+        record_types = current_app.config["BULK_IMPORTER_RECORD_TYPES"]
+        record_type = record_types[record_type_str]
+        return dict(
+            serializers=list(record_type.get("serializers", {}).keys()),
+            options=record_type.get("options", {}),
+        )
 
     @unit_of_work()
     def delete_metadata_file(self, identity, id_, uow=None):
@@ -77,7 +98,7 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         # TODO: Validate Metadata file exists - throw error
 
         # Load the importer records with the specified serializer data.
-        load_importer_file.delay(str(record.id))
+        valid_importer_file_data.delay(str(record.id))
 
         return self.result_item(
             self,
@@ -86,6 +107,15 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             links_tpl=self.links_item_tpl,
             expandable_fields=self.expandable_fields,
         )
+
+    @unit_of_work()
+    def start_loading_records(self, identity, id_, uow=None):
+        """Start the load of the importer task to create a new invenio record."""
+        record = self.record_cls.pid.resolve(id_)
+        self.require_permission(identity, "read", record=record)
+
+        # Start loading the
+        run_transformed_records.delay(str(record.id), ["validated"])
 
     #
     # Private methods
@@ -197,8 +227,12 @@ class ImporterRecordService(BulkImporterMixin, RecordService):
     def create(self, identity, data, task_id, uow=None, expand=False):
         """Create a record.
 
-        :param identity: Identity of user creating the record.
-        :param data: Input data according to the data schema.
+        Args:
+            identity: Identity of user creating the record.
+            data: Input data according to the data schema.
+            task_id: The ID of the importer task.
+            uow: Unit of work for database operations.
+            expand: Whether to expand the record with additional fields.
         """
         return self._create(
             self.record_cls, identity, data, task_id, uow=uow, expand=expand

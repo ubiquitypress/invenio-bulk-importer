@@ -160,7 +160,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             uow: Unit of Work for database operations.
         """
         # Create the RDM record using the validated data.
-        record_item = self._create_record(self._importer_record, uow)
+        record_item = self._upsert_record(self._importer_record, uow)
         self._add_files_to_record(self._importer_record, record_item)
 
         # # Add the record to the communities if specified.
@@ -177,7 +177,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
 
     def _create_record(self, importer_record, uow):
         """Create a new Invenio record."""
-        record = None
+        # This method is not used in RDMRecord, as _upsert_record handles creation.
         try:
             record = current_rdm_records_service.create(
                 system_identity,
@@ -195,6 +195,17 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             )
             raise
         return record
+
+    def _update_record(self, existing_record_id, importer_record, uow):
+        """Update an existing Invenio record."""
+        # Need to check if exisiting record is
+        pass
+
+    def _upsert_record(self, importer_record, uow):
+        """Record to be updated or created based on if exisiting record id is present."""
+        if existing_record_id := importer_record.get("existing_record_id"):
+            return self._update_record(existing_record_id, importer_record, uow)
+        return self._create_record(importer_record, uow)
 
     def _add_files_to_record(self, importer_record, record_item, uow=None) -> None:
         """Add the file to the specified record."""
