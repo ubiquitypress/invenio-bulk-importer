@@ -10,7 +10,6 @@
 
 from invenio_i18n import lazy_gettext as _
 
-
 # TODO: This is an example file. Remove it if your package does not use any
 # extra configuration variables.
 

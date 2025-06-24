@@ -268,38 +268,36 @@ class MetadataSchema(BaseModel):
         """Load and transform subjects."""
         output = []
 
-        # keywords = values.get("keywords", "")
+        keywords = values.get("keywords", "")
 
-        # for k in keywords.split("\n"):
-        #     if keyword := k.strip():
-        #         output.append({"subject": keyword})
+        for k in keywords.split("\n"):
+            if keyword := k.strip():
+                output.append({"subject": keyword})
 
-        # subjects = values.get("subjects.subject", "").split("\n")
-        # schemes = values.get("subjects.scheme", "").split("\n")
+        subjects = values.get("subjects.subject", "").split("\n")
+        schemes = values.get("subjects.scheme", "").split("\n")
 
-        # if len(subjects) != len(schemes):
-        #     raise ValueError("Each subject must have a schema and a subject")
+        if len(subjects) != len(schemes):
+            raise ValueError("Each subject must have a schema and a subject")
 
-        # subjects_service = current_service_registry.get("subjects")
-        # for subject, scheme in zip(subjects, schemes):
-        #     print(subject, scheme)
-        #     hits = subjects_service.search(
-        #         system_identity,
-        #         params={"q": f'subject:"{subject}" AND scheme:"{scheme}"'},
-        #     )
-        #     print(hits.total)
-        #     if hits.total != 1:
-        #         # To avoid non predictable outputs we only allow for one match
-        #         raise ValueError(f"Subject {scheme}:{subject} cannot be matched.")
+        subjects_service = current_service_registry.get("subjects")
+        for subject, scheme in zip(subjects, schemes):
+            hits = subjects_service.search(
+                system_identity,
+                params={"q": f'subject:"{subject}" AND scheme:"{scheme}"'},
+            )
+            if hits.total != 1:
+                # To avoid non predictable outputs we only allow for one match
+                raise ValueError(f"Subject {scheme}:{subject} cannot be matched.")
 
-        #     subject = next(hits.hits)
+            subject = next(hits.hits)
 
-        #     output.append(
-        #         {
-        #             "id": subject["id"],
-        #             "subject": subject["subject"],
-        #         }
-        #     )
+            output.append(
+                {
+                    "id": subject["id"],
+                    "subject": subject["subject"],
+                }
+            )
         values["subjects"] = output
         return values
 

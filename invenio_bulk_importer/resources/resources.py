@@ -10,19 +10,17 @@
 
 from flask import g
 from flask_resources import (
+    request_body_parser,
     resource_requestctx,
     response_handler,
-    request_body_parser,
     route,
 )
-
 from invenio_records_resources.resources.records.resource import (
     RecordResource,
     request_view_args,
 )
 
 from .parser import RequestFileNameAndStreamParser
-
 
 request_stream = request_body_parser(
     parsers={"application/octet-stream": RequestFileNameAndStreamParser()},

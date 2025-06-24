@@ -83,7 +83,9 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error run_transformed_record for record/task: {record_id_str}/{task_id_str}:- {e}")
+        print(
+            f"Error run_transformed_record for record/task: {record_id_str}/{task_id_str}:- {e}"
+        )
         # Handle error appropriately, e.g., log it or update task status
         raise e
 
@@ -128,6 +130,7 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         importer_record_dict["serializer_data"] = None
         importer_record_dict["transformed_data"] = None
         if serializer_errors:
+            print(serializer_errors)
             importer_record_dict["status"] = "serializer validation failed"
             importer_record_dict["errors"] = serializer_errors
         else:
@@ -150,7 +153,9 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         )
     except Exception as e:
         traceback.print_exc()
-        print(f"Error validate_serialized_data for record/task: {record_id_str}/{task_id_str}:- {e}")
+        print(
+            f"Error validate_serialized_data for record/task: {record_id_str}/{task_id_str}:- {e}"
+        )
         # Handle error appropriately, e.g., log it or update task status
         raise e
 

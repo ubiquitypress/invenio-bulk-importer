@@ -9,8 +9,8 @@
 """Bulk Importer Services."""
 import os
 from copy import deepcopy
-from flask import current_app
 
+from flask import current_app
 from invenio_records_resources.services.records import RecordService
 from invenio_records_resources.services.uow import (
     RecordCommitOp,
@@ -18,9 +18,9 @@ from invenio_records_resources.services.uow import (
 )
 
 from .tasks import (
-    valid_importer_file_data,
     run_transformed_record,
     run_transformed_records,
+    valid_importer_file_data,
 )
 
 
@@ -104,6 +104,28 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             self,
             identity,
             record,
+            links_tpl=self.links_item_tpl,
+            expandable_fields=self.expandable_fields,
+        )
+
+    def status_update(self, identity, id_, uow=None):
+        """Update the status of the importer task."""
+        task = self.record_cls.pid.resolve(id_)
+        self.require_permission(identity, "create", record=task)
+
+        records_status = task.get_importer_record_info()
+        # Update the task with the total number of records processed
+        task_data = self.get_current_task_data(task)
+        task_data["records_status"] = records_status
+        # Determine Status update of task based on record statuses.
+        task_data["status"] = "validating"
+        # Update the task metadata
+        self._update_task_metadata(identity, task, task_data, uow=uow)
+
+        return self.result_item(
+            self,
+            identity,
+            task,
             links_tpl=self.links_item_tpl,
             expandable_fields=self.expandable_fields,
         )

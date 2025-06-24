@@ -6,8 +6,8 @@
 # under the terms of the MIT License; see LICENSE file for more details.
 
 """Config for Importer Task/Record Resource."""
-import marshmallow as ma
 
+import marshmallow as ma
 from flask_resources import (
     BaseObjectSchema,
     HTTPJSONException,
@@ -15,12 +15,10 @@ from flask_resources import (
     ResponseHandler,
     create_error_handler,
 )
-
+from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_records_resources.resources.records import RecordResourceConfig
 from invenio_records_resources.resources.records.headers import etag_headers
 from invenio_records_resources.services.base.config import ConfiguratorMixin, FromConfig
-from invenio_pidstore.errors import PIDDoesNotExistError
-
 
 importer_task_error_handlers = RecordResourceConfig.error_handlers.copy()
 importer_task_error_handlers.update(
@@ -59,8 +57,7 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     }
 
     error_handlers = FromConfig(
-        "IMPORTER_TASK_ERROR_HANDLERS",
-        default=importer_task_error_handlers
+        "IMPORTER_TASK_ERROR_HANDLERS", default=importer_task_error_handlers
     )
 
     response_handlers = {
@@ -69,7 +66,7 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
             BaseObjectSchema(), headers=etag_headers
         ),
     }
-    
+
     request_view_args = {
         **RecordResourceConfig.request_view_args,
         "record_type": ma.fields.Str(),

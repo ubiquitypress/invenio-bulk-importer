@@ -73,6 +73,7 @@ def validate_task_status(value):
     if value not in [
         "created",
         "validating",
+        "validation failed",
         "running",
         "success",
         "failure",

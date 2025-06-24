@@ -3,8 +3,8 @@ import time
 from io import BytesIO
 
 
-def test_importer_task(
-    app,
+def test_importer_task_with_create(
+    running_app,
     db,
     admin_client,
     headers,
@@ -128,6 +128,7 @@ def test_importer_task(
             response.json["metadata"]["title"]
             == "Micraster ernsti Schlüter 2024, sp. nov."
         )
+        assert response.json["versions"]["index"] == 1
         assert response.json["status"] == "published"
         assert response.json["files"]["entries"]["xml.xsd"]["size"] == 1663
         assert (

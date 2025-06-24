@@ -10,8 +10,6 @@
 
 import pytest
 from invenio_files_rest.models import Bucket, ObjectVersion
-from invenio_rdm_records.proxies import current_rdm_records_service as record_service
-from invenio_rdm_records.records.api import RDMDraft, RDMRecord
 
 from invenio_bulk_importer.record_types.rdm import RDMRecord as BulkImportRDMRecord
 
@@ -41,6 +39,36 @@ def validated_rdm_record_instance_with_community(valid_importer_record_with_comm
             None,
         ),
         importer_record=valid_importer_record_with_community._obj,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def validated_edit_rdm_record_instance_with_community(
+    valid_edit_importer_record_with_community,
+):
+    """Fixture to create an RDMRecord instance, with community."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            None,
+            None,
+        ),
+        importer_record=valid_edit_importer_record_with_community._obj,
+    )
+    return rdm_record
+
+
+@pytest.fixture
+def validated_edit_rdm_record_instance_with_community_and_no_files(
+    valid_edit_importer_record_with_community_no_file,
+):
+    """Fixture to create an RDMRecord instance, with community."""
+    rdm_record = BulkImportRDMRecord(
+        (
+            None,
+            None,
+        ),
+        importer_record=valid_edit_importer_record_with_community_no_file._obj,
     )
     return rdm_record
 
@@ -363,61 +391,3 @@ def valid_rdm_record_instance(bucket_with_object_version, valid_serialized_recor
         bucket_with_object_version.id,
     )
     return rdm_record
-
-
-@pytest.fixture()
-def minimal_record():
-    """Minimal record data as dict coming from the external world."""
-    return {
-        "pids": {},
-        "files": {
-            "enabled": False,  # Most tests don't care about files
-        },
-        "metadata": {
-            "creators": [
-                {
-                    "person_or_org": {
-                        "family_name": "Howlett",
-                        "given_name": "James",
-                        "type": "personal",
-                    }
-                },
-            ],
-            "publication_date": "2020-06-01",
-            "publisher": "Acme Inc",
-            "resource_type": {"id": "dataset"},
-            "title": "Logan",
-        },
-    }
-
-
-@pytest.fixture()
-def record_owner(UserFixture, app, db):
-    """Record owner."""
-    u = UserFixture(
-        email="record_owner@up.up",
-        password="record_owner",
-    )
-    u.create(app, db)
-    return u
-
-
-@pytest.fixture()
-def record(running_app, record_owner, minimal_record, app_config):
-    """Create record using the minimal record fixture data."""
-    r = record_service.create(record_owner.identity, minimal_record)
-    r = record_service.publish(record_owner.identity, r.id)
-
-    RDMRecord.index.refresh()
-
-    return r
-
-
-@pytest.fixture()
-def draft(running_app, record_owner, minimal_record):
-    """Create record using the minimal record fixture data."""
-    r = record_service.create(record_owner.identity, minimal_record)
-
-    RDMDraft.index.refresh()
-
-    return r

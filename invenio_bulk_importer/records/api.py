@@ -157,6 +157,24 @@ class ImporterTask(Record):
         records_info = query.all()
         return [str(id) for (id,) in records_info]
 
+    def determine_status(self, records_status):
+        """Determine the status of the task based on the records' statuses."""
+        if not records_status:
+            return "no records"
+
+        if "failed" in records_status:
+            return "failed"
+        if "serializer validation failed" in records_status:
+            return "validation failed"
+        if "validation failed" in records_status:
+            return "validation failed"
+        if "validated" in records_status:
+            return "validated"
+        if "imported" in records_status:
+            return "imported"
+
+        return "unknown"
+
 
 class ImporterRecord(Record):
     """Importer Record record."""

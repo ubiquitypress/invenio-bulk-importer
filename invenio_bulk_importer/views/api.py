@@ -10,7 +10,6 @@
 
 from flask import Blueprint
 
-
 blueprint = Blueprint(
     "invenio_bulk_importer_ext",
     __name__,
