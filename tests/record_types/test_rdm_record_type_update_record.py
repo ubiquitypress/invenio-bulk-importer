@@ -6,10 +6,6 @@ from invenio_rdm_records.records.models import RDMDraftMetadata, RDMRecordMetada
 
 def assert_counts(buckets=0, objs=0, fileinstances=0, drafts=0, records=0):
     """Helper to assert counts of file related tables."""
-    print("Asserting counts...")
-    print(
-        f"Buckets: {Bucket.query.count()}, Objects: {ObjectVersion.query.count()}, FileInstances: {FileInstance.query.count()}, Drafts: {RDMDraftMetadata.query.count()}, Records: {RDMRecordMetadata.query.count()}"
-    )
     assert Bucket.query.count() == buckets
     assert ObjectVersion.query.count() == objs
     assert FileInstance.query.count() == fileinstances
@@ -22,7 +18,7 @@ def test_publish_record_with_files_into_a_community(
 ):
     """Test publishing a record with files into a community."""
     assert_counts(buckets=4, objs=2, fileinstances=2, drafts=1, records=1)
-    record = validated_edit_rdm_record_instance_with_community.run()
+    record = validated_edit_rdm_record_instance_with_community.run(mode="import")
     RDMDraft.index.refresh()
     RDMRecord.index.refresh()
     assert record
@@ -54,8 +50,9 @@ def test_publish_record_with_no_files_into_a_community(
         ),
     )
     assert current_record.to_dict()["metadata"]["title"] == "Logan"
-    # print(current_record.to_dict())
-    record = validated_edit_rdm_record_instance_with_community_and_no_files.run()
+    record = validated_edit_rdm_record_instance_with_community_and_no_files.run(
+        mode="import"
+    )
     RDMDraft.index.refresh()
     RDMRecord.index.refresh()
     assert record

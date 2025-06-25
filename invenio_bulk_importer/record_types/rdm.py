@@ -11,6 +11,7 @@
 import traceback
 
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.records.api import RDMRecord as InvenioRDMRecord
 from invenio_records_resources.services.uow import unit_of_work
 from invenio_records_resources.tasks import system_identity
 from invenio_requests.proxies import current_requests_service
@@ -106,7 +107,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                         dict(type="validation_error", loc=prefix, msg=error)
                     )
 
-    def validate(self) -> bool:
+    def validate(self, mode: str) -> bool:
         """Validate the serializer object can be loaded into Invenio.
 
         Returns True if the validation is successful, otherwise False.
@@ -120,14 +121,17 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                 )
             )
             return False
-        self._verify_record_exists(self.id)
-        self._verify_files_accessible(self._files)
-        self._verify_communities_exist(self._serializer_communities)
-        self._verify_rdm_record_correctness(self._serializer_record_data)
-        self._verify_pre_commit_correctness(self._record)
+        self._verify_record_exists(self.id, required=(mode == "delete"))
+        if mode == "import":  # Only validate further if we are importing records.
+            self._verify_files_accessible(self._files)
+            self._verify_communities_exist(self._serializer_communities)
+            self._verify_rdm_record_correctness(self._serializer_record_data)
+            self._verify_pre_commit_correctness(self._record)
+        elif mode == "delete":
+            self._record = self._serializer_record_data
         return self.is_successful
 
-    def run(self) -> dict | None:
+    def run(self, mode: str = "import") -> dict | None:
         """Run the record creation process.
 
         Returns:
@@ -139,7 +143,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             return
         # Run create, edit or delete
         try:
-            return self._run()
+            return self._run(mode)
         except Exception:
             traceback.print_exc()
             if not self.errors:
@@ -154,14 +158,16 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             return
 
     @unit_of_work()
-    def _run(self, uow=None):
+    def _run(self, mode: str, uow=None):
         """Run the record creation process with unit of work.
 
         Args:
             uow: Unit of Work for database operations.
         """
-        # Create the RDM record using the validated data.
-        return self._upsert_record(self._importer_record, uow)
+        if mode == "import":
+            # Create the RDM record using the validated data.
+            return self._upsert_record(self._importer_record, uow)
+        return self._delete_record(self._importer_record, uow)
 
     def _create_record(self, importer_record, uow):
         """Create a new Invenio record."""
@@ -185,77 +191,111 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         self._publish_record(record_item, uow)
         return record_item
 
+    def _delete_record(self, importer_record, uow):
+        """Delete an existing Invenio record."""
+        existing_record_id = importer_record.get("existing_record_id")
+        try:
+            data = importer_record["transformed_data"]
+            tombstone_info = dict(note=data.get("reason", "deleted by bulk importer."))
+            record_item = current_rdm_records_service.delete_record(
+                system_identity, existing_record_id, tombstone_info
+            )
+        except Exception as e:
+            traceback.print_exc()
+            self._add_error(
+                dict(
+                    type="record_deletion_error",
+                    loc="record",
+                    msg=f"Error deleting record ({existing_record_id}): {str(e)}",
+                )
+            )
+            raise
+        return record_item
+
     def _update_record(self, existing_record_id, importer_record, uow):
-        """Update an existing Invenio record."""
-        # Need to check if exisiting record is
-        # if metadata only change then can use update method
-        # if files are being added then need to create new version and go through draft process.
-        data = importer_record.get("transformed_data", {})
+        """Update an existing Invenio record is required, determine what type of update."""
+        record_item = None
         if importer_record.get("validated_record_files", []):
             # If files are being added, create a new version.
-            try:
-                record_item = current_rdm_records_service.new_version(
-                    system_identity,
-                    existing_record_id,
-                    uow=uow,
+            record_item = self._update_new_version(
+                existing_record_id, importer_record, uow
+            )
+        else:  # Revision update as just metadata
+            record_item = self._update_new_revision(
+                existing_record_id, importer_record, uow
+            )
+        return record_item
+
+    def _update_new_revision(self, existing_record_id, importer_record, uow):
+        """Update an existing Invenio record by creating a new version - no files."""
+        try:
+            data = importer_record.get("transformed_data", {})
+            record_item = current_rdm_records_service.edit(
+                system_identity,
+                existing_record_id,
+                uow=uow,
+            )
+            record_item = current_rdm_records_service.update_draft(
+                system_identity,
+                record_item.id,
+                data=data,
+                uow=uow,
+            )
+            current_rdm_records_service.publish(
+                system_identity,
+                record_item.id,
+                uow=uow,
+            )
+        except Exception as e:
+            traceback.print_exc()
+            self._add_error(
+                dict(
+                    type="record_update_error",
+                    loc="record",
+                    msg=f"Error updating record ({existing_record_id}): {str(e)}",
                 )
-                #  Update the draft with the new metadata.
-                current_rdm_records_service.update_draft(
-                    system_identity,
-                    record_item.id,
-                    data=data,
-                    uow=uow,
+            )
+            raise
+        return record_item
+
+    def _update_new_version(self, existing_record_id, importer_record, uow):
+        """Update an existing Invenio record by creating a new version because it has files."""
+        try:
+            print(f"Creating new version...from {existing_record_id}")
+            data = importer_record.get("transformed_data", {})
+            record_item = current_rdm_records_service.new_version(
+                system_identity,
+                existing_record_id,
+                uow=uow,
+            )
+            print(f"New record {record_item.id}")
+            #  Update the draft with the new metadata.
+            current_rdm_records_service.update_draft(
+                system_identity,
+                record_item.id,
+                data=data,
+                uow=uow,
+            )
+            # Add files to the draft.
+            InvenioRDMRecord.index.refresh()
+            self._add_files_to_record(importer_record, record_item, uow)
+            # Publish the new version. even if in a community.
+            # It appears you cannot change the community of a record via edit.
+            current_rdm_records_service.publish(
+                system_identity,
+                record_item.id,
+                uow=uow,
+            )
+        except Exception as e:
+            traceback.print_exc()
+            self._add_error(
+                dict(
+                    type="record_update_error",
+                    loc="record",
+                    msg=f"Error creating new version of record ({existing_record_id}): {str(e)}",
                 )
-                # Add files to the draft.
-                self._add_files_to_record(importer_record, record_item, uow)
-                # Publish the new version. even if in a community.
-                # It appears you cannot change the community of a record via edit.
-                current_rdm_records_service.publish(
-                    system_identity,
-                    record_item.id,
-                    uow=uow,
-                )
-            except Exception as e:
-                traceback.print_exc()
-                self._add_error(
-                    dict(
-                        type="record_update_error",
-                        loc="record",
-                        msg=f"Error creating new version of record ({existing_record_id}): {str(e)}",
-                    )
-                )
-                raise
-        else:
-            try:
-                # If no files are being added, update the existing record.
-                record_item = current_rdm_records_service.edit(
-                    system_identity,
-                    existing_record_id,
-                    uow=uow,
-                )
-                record_item = current_rdm_records_service.update_draft(
-                    system_identity,
-                    record_item.id,
-                    data=data,
-                    uow=uow,
-                )
-                current_rdm_records_service.publish(
-                    system_identity,
-                    record_item.id,
-                    uow=uow,
-                )
-            except Exception as e:
-                traceback.print_exc()
-                self._add_error(
-                    dict(
-                        type="record_update_error",
-                        loc="record",
-                        msg=f"Error updating record ({existing_record_id}): {str(e)}",
-                    )
-                )
-                raise
-        # publish
-        # self._publish_record(record_item, uow)
+            )
+            raise
         return record_item
 
     def _upsert_record(self, importer_record, uow):
@@ -303,6 +343,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                             msg=f"Error uploading and commiting '{file_key}' to record '{record_item.id}': {str(e)}",
                         )
                     )
+                    print(self._errors)
                     raise
         except Exception as e:
             self._add_error(
@@ -312,6 +353,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                     msg=f"Error initializing file for '{record_item.id}': {str(e)}",
                 )
             )
+            print(self._errors)
             raise
 
     def _add_record_to_communities(self, community_uuids: dict, record, uow) -> None:

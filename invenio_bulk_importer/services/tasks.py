@@ -64,12 +64,12 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
     try:
         record = _get_record_from_uuid_str(record_id_str, records_service)
         importer_record_dict = records_service.get_current_task_data(record)
-        _, record_type_cls, _ = _get_importer_task_classes(task_id_str)
+        task, record_type_cls, _ = _get_importer_task_classes(task_id_str)
         rdm_record = record_type_cls(
             (None, None),
             importer_record=record,
         )
-        record_item = rdm_record.run()
+        record_item = rdm_record.run(mode=task.get("mode"))
         importer_record_dict["status"] = (
             "success" if rdm_record.is_successful else "creation failed"
         )
@@ -117,8 +117,9 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         record = _get_record_from_uuid_str(record_id_str, records_service)
         importer_record_dict = records_service.get_current_task_data(record)
         task, record_type_cls, serializer = _get_importer_task_classes(task_id_str)
+        mode = task.get("mode")
         serializer_data, serializer_errors = serializer.transform(
-            importer_record_dict["src_data"]
+            importer_record_dict["src_data"], mode=mode
         )
         rdm_record = record_type_cls(
             (
@@ -130,13 +131,12 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         importer_record_dict["serializer_data"] = None
         importer_record_dict["transformed_data"] = None
         if serializer_errors:
-            print(serializer_errors)
             importer_record_dict["status"] = "serializer validation failed"
             importer_record_dict["errors"] = serializer_errors
         else:
             importer_record_dict["serializer_data"] = serializer_data
             importer_record_dict["status"] = (
-                "validated" if rdm_record.validate() else "validation failed"
+                "validated" if rdm_record.validate(mode=mode) else "validation failed"
             )
             importer_record_dict["transformed_data"] = rdm_record.validated_record_dict
             importer_record_dict["errors"] = rdm_record.errors

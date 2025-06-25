@@ -1036,6 +1036,7 @@ def _create_task_with_csv_updates(
     task_data: dict,
     csv_updates: dict,  # Dictionary of column: value pairs to update
     identity,
+    delete: bool = False,
 ):
     """Helper function to create task with CSV updates."""
     task = importer_tasks_service.create(identity, data=task_data)
@@ -1046,8 +1047,14 @@ def _create_task_with_csv_updates(
         updated_rows = []
         for row in csv_reader:
             updated_row = dict(row)
-            if csv_updates and updated_row["resource_type.id"] == "dataset":
+            if (
+                not delete
+                and csv_updates
+                and updated_row["resource_type.id"] == "dataset"
+            ):
                 # Apply all updates
+                updated_row.update(csv_updates)
+            if delete:
                 updated_row.update(csv_updates)
             updated_rows.append(updated_row)
     # Create and upload updated CSV
@@ -1118,12 +1125,15 @@ def delete_task(running_app, db, user_admin, minimal_importer_task, record):
     """Create an importer task for deletion of an exisiting record."""
     version_task_data = deepcopy(minimal_importer_task)
     version_task_data.update({"mode": "delete"})
-    file_path = os.path.join(f"{os.path.dirname(__file__)}/data", "rdm_records.csv")
+    file_path = os.path.join(
+        f"{os.path.dirname(__file__)}/data", "rdm_records_delete.csv"
+    )
     return _create_task_with_csv_updates(
         csv_file_path=file_path,
         task_data=version_task_data,
-        csv_updates={},
+        csv_updates={"id": record.id},
         identity=user_admin.identity,
+        delete=True,
     )
 
 

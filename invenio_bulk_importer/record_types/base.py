@@ -366,9 +366,9 @@ class FileMixin:
 class InvenioRecordMixin:
     """Mixin to handle Invenio record-related operations."""
 
-    def _verify_record_exists(self, record_id: str) -> bool:
+    def _verify_record_exists(self, record_id: str, required: bool = False) -> bool:
         """Verify that the draft or published record exist."""
-        if not record_id:
+        if not record_id and not required:
             return True  # No record ID provided, nothing to verify
 
         try:

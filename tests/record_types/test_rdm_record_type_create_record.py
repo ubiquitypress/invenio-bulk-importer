@@ -29,7 +29,6 @@ def test_publish_record_with_files_into_a_community(
     assert hit["parent"]["communities"]["entries"][0]["slug"] == "test-community"
     assert hit["is_published"]
     assert not hit["is_draft"]
-    print(hit["files"])
     assert all_records.total == 1
 
 

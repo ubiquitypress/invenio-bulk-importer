@@ -422,10 +422,26 @@ class CSVRecordSchema(BaseModel):
         return values
 
 
+class DeleteCSVRecordSchema(BaseModel):
+    """CSV RDM Record Pydantic schema for deletions."""
+
+    id: str
+    reason: str | None = Field(default=None)
+
+    @field_validator("id", mode="before")
+    def validate_id(cls, value):
+        """Validate ID for deletion."""
+        if not value:
+            raise ValueError("ID must be provided for deletion.")
+        return value
+
+
 class CSVRDMRecordSerializer(CSVSerializer):
     """Serializer for RDM records."""
 
-    def transform(self, obj: dict) -> tuple[dict | None, list[dict] | None]:
+    def transform(
+        self, obj: dict, mode: str = "import"
+    ) -> tuple[dict | None, list[dict] | None]:
         """Transform the input object into a CSV-compatible format.
 
         Args:
@@ -433,9 +449,15 @@ class CSVRDMRecordSerializer(CSVSerializer):
         Returns:
             dict: The transformed object.
         """
+        modes = {
+            "import": CSVRecordSchema,
+            "delete": DeleteCSVRecordSchema,
+        }
+        if mode not in modes:
+            raise ValueError(f"Unsupported mode: {mode}")
         try:
             return (
-                CSVRecordSchema(**obj).model_dump(
+                modes[mode](**obj).model_dump(
                     exclude_unset=True,
                     exclude_none=True,
                 ),

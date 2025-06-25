@@ -417,7 +417,7 @@ def test_verify_serialized_data_is_invalid(rdm_record_instance):
 
 def test_full_successful_validation_of_record(valid_rdm_record_instance, community):
     """Test that a full validation of the record is successful."""
-    valid_rdm_record_instance.validate()
+    valid_rdm_record_instance.validate(mode="import")
     assert valid_rdm_record_instance.is_successful is True
     assert valid_rdm_record_instance.errors == []
     assert valid_rdm_record_instance._record
@@ -425,7 +425,7 @@ def test_full_successful_validation_of_record(valid_rdm_record_instance, communi
 
 def test_unsuccessful_pre_commit_validation_of_record(rdm_record_instance, community):
     """Test that a full validation of the record is successful."""
-    rdm_record_instance.validate()
+    rdm_record_instance.validate(mode="import")
     assert rdm_record_instance.is_successful is False
     assert rdm_record_instance.errors == [
         {
@@ -471,7 +471,7 @@ def test_full_unsuccessful_validation_of_record(rdm_record_instance, community):
     rdm_record_instance._serializer_record_data["metadata"]["contributors"][0].pop(
         "role"
     )  # Remove role for a contributor as required.
-    rdm_record_instance.validate()
+    rdm_record_instance.validate(mode="import")
     assert rdm_record_instance.is_successful is False
     assert rdm_record_instance.errors == [
         dict(
@@ -505,7 +505,7 @@ def test_full_unsuccessful_validation_of_record_as_serialization_failed(
             msg="Already broken.",
         )
     )
-    rdm_record_instance.validate()
+    rdm_record_instance.validate(mode="import")
     assert rdm_record_instance.is_successful is False
     assert rdm_record_instance.errors == [
         dict(

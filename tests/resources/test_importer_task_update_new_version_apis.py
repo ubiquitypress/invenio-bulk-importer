@@ -6,7 +6,6 @@ def test_importer_task_with_file_update_new_version(
     db,
     admin_client,
     headers,
-    minimal_importer_task,
     location,
     search_clear,
     community,

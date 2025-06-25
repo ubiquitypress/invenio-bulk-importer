@@ -307,3 +307,50 @@ def test_schema_missing_required_field(running_app, csv_rdm_record):
 
     # Check that we have the right number of errors
     assert len(errors) == len(expected_errors)
+
+
+def test_schema_for_delete_success(running_app, record):
+    """Test validation without custom fields to see if it causes an issue."""
+    csv_rdm_record = {"id": record.id, "reason": "Test delete"}
+    serializer = CSVRDMRecordSerializer()
+    try:
+        result, errors = serializer.transform(csv_rdm_record, mode="delete")
+    except Exception:
+        raise
+    assert errors is None
+    assert result == {
+        "id": record.id,
+        "reason": "Test delete",
+    }
+
+
+def test_schema_for_delete_success_no_reason(running_app, record):
+    """Test validation without custom fields to see if it causes an issue."""
+    csv_rdm_record = {"id": record.id, "reason": None}
+    serializer = CSVRDMRecordSerializer()
+    try:
+        result, errors = serializer.transform(csv_rdm_record, mode="delete")
+    except Exception:
+        raise
+    assert errors is None
+    assert result == {
+        "id": record.id,
+    }
+
+
+def test_schema_for_delete_missing_id(running_app):
+    """Test validation without custom fields to see if it causes an issue."""
+    csv_rdm_record = {"id": "", "reason": "Test delete"}
+    serializer = CSVRDMRecordSerializer()
+    try:
+        result, errors = serializer.transform(csv_rdm_record, mode="delete")
+    except Exception:
+        raise
+    assert errors == [
+        {
+            "type": "value_error",
+            "loc": "id",
+            "msg": "Value error, ID must be provided for deletion.",
+        }
+    ]
+    assert result is None
