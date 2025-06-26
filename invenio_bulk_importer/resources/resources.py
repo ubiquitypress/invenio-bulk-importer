@@ -51,6 +51,7 @@ class ImporterTaskResource(RecordResource):
             route("GET", routes["config-item"], self.get_record_type_configs),
             route("POST", routes["item-validate"], self.start_validation),
             route("POST", routes["item-load"], self.start_loading_records),
+            route("PUT", routes["item-status"], self.get_status_update),
         ]
 
     @response_handler(many=True)
@@ -117,6 +118,17 @@ class ImporterTaskResource(RecordResource):
         """Trigger validation for the current task."""
         task_id = resource_requestctx.view_args["pid_value"]
         item = self.service.start_loading_records(
+            g.identity,
+            task_id,
+        )
+        return item.to_dict(), 200
+
+    @request_view_args
+    @response_handler()
+    def get_status_update(self):
+        """Trigger task status update based on associated records."""
+        task_id = resource_requestctx.view_args["pid_value"]
+        item = self.service.status_update(
             g.identity,
             task_id,
         )

@@ -24,6 +24,7 @@ from invenio_bulk_importer.record_types.base import (
     RecordType,
 )
 
+from ..proxies import current_importer_tasks_service as tasks_service
 from ..records.api import ImporterRecord
 
 
@@ -50,6 +51,12 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         self._add_file_vars(serializer_data, bucket_id)
         super().__init__(serializer_data)
         self._importer_record = importer_record
+        self.options = {}
+        # get task options for creating record.
+        if self._importer_record:
+            self.options = tasks_service.record_cls.pid.resolve(
+                self._importer_record.task_id
+            )["options"]
         self.kwargs = kwargs
 
     def _verify_rdm_record_correctness(self, serializer_data):
@@ -131,21 +138,24 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
             self._record = self._serializer_record_data
         return self.is_successful
 
-    def run(self, mode: str = "import") -> dict | None:
-        """Run the record creation process.
+    @unit_of_work()
+    def run(self, mode: str = "import", uow=None) -> dict | None:
+        """Run the record creation/edit or delete process.
+
+        At this point a importer record must be validated to continue.
 
         Returns:
             dict: The created record.
         """
-        # TODO: Add ability to DELETE a record.
         if not self._importer_record or self._importer_record["status"] != "validated":
             # Cannot run record creation as not in correct status.
             return
         # Run create, edit or delete
         try:
-            return self._run(mode)
+            if mode == "import":  # Create the RDM record using the validated data.
+                return self._upsert_record(self._importer_record, uow)
+            return self._delete_record(self._importer_record, uow)  # Delete record.
         except Exception:
-            traceback.print_exc()
             if not self.errors:
                 # If no errors were added, log the traceback as an error.
                 self._add_error(
@@ -155,28 +165,19 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                         msg=f"An unexpected error occurred: {traceback.format_exc()}",
                     )
                 )
-            return
-
-    @unit_of_work()
-    def _run(self, mode: str, uow=None):
-        """Run the record creation process with unit of work.
-
-        Args:
-            uow: Unit of Work for database operations.
-        """
-        if mode == "import":
-            # Create the RDM record using the validated data.
-            return self._upsert_record(self._importer_record, uow)
-        return self._delete_record(self._importer_record, uow)
+        return
 
     def _create_record(self, importer_record, uow):
         """Create a new Invenio record."""
         try:
+            data = importer_record["transformed_data"]
             record_item = current_rdm_records_service.create(
                 system_identity,
-                data=importer_record["transformed_data"],
+                data=data,
                 uow=uow,
             )
+            self._doi_minting(record_item, data, uow)
+
         except Exception as e:
             traceback.print_exc()
             self._add_error(
@@ -190,6 +191,18 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         self._add_files_to_record(self._importer_record, record_item)
         self._publish_record(record_item, uow)
         return record_item
+
+    def _doi_minting(self, record_item, data, uow):
+        """Check if DOI minting and pid required then get doi from provider."""
+        if self.options.get("doi_minting") and "doi" not in data.get("pids", {}):
+            # if pids doesn't have an external doi and minted config is set to True
+            current_rdm_records_service.pids.create(
+                system_identity,
+                record_item.id,
+                "doi",
+                provider="datacite",
+                uow=uow,
+            )
 
     def _delete_record(self, importer_record, uow):
         """Delete an existing Invenio record."""
@@ -261,14 +274,12 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
     def _update_new_version(self, existing_record_id, importer_record, uow):
         """Update an existing Invenio record by creating a new version because it has files."""
         try:
-            print(f"Creating new version...from {existing_record_id}")
             data = importer_record.get("transformed_data", {})
             record_item = current_rdm_records_service.new_version(
                 system_identity,
                 existing_record_id,
                 uow=uow,
             )
-            print(f"New record {record_item.id}")
             #  Update the draft with the new metadata.
             current_rdm_records_service.update_draft(
                 system_identity,
@@ -277,7 +288,6 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                 uow=uow,
             )
             # Add files to the draft.
-            InvenioRDMRecord.index.refresh()
             self._add_files_to_record(importer_record, record_item, uow)
             # Publish the new version. even if in a community.
             # It appears you cannot change the community of a record via edit.
@@ -379,18 +389,19 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                     data,
                     uow=uow,
                 )
-                # Submit record to community to be accepted.
-                current_requests_service.execute_action(
-                    system_identity, id_=request.id, action="submit", uow=uow
-                )
-                # Accept Record into the community.
-                current_requests_service.execute_action(
-                    system_identity,
-                    id_=request.id,
-                    action="accept",
-                    send_notification=False,
-                    uow=uow,
-                )
+                if self.options.get("publish", True):
+                    # Submit record to community to be accepted.
+                    current_requests_service.execute_action(
+                        system_identity, id_=request.id, action="submit", uow=uow
+                    )
+                    # Accept Record into the community.
+                    current_requests_service.execute_action(
+                        system_identity,
+                        id_=request.id,
+                        action="accept",
+                        send_notification=False,
+                        uow=uow,
+                    )
             except Exception as e:
                 self._add_error(
                     dict(
@@ -408,8 +419,10 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         if community_uuids:
             self._add_record_to_communities(community_uuids, record_item, uow)
         else:
-            current_rdm_records_service.publish(
-                system_identity,
-                record_item.id,
-                uow=uow,
-            )
+            if self.options.get("publish_record", True):
+                # If no communities specified, publish globally.
+                current_rdm_records_service.publish(
+                    system_identity,
+                    record_item.id,
+                    uow=uow,
+                )

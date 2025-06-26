@@ -20,9 +20,8 @@ class ImporterRecordState(Enum):
     SERIALIZER_VALIDATION_FAILED = "serializer validation failed"
     VALIDATION_FAILED = "validation failed"
     VALIDATED = "validated"
-    IMPORTING = "importing"
     IMPORT_FAILED = "import failed"
-    SUCCESS = "success"
+    IMPORTED = "success"
 
 
 class ImporterTaskState(Enum):
@@ -31,9 +30,11 @@ class ImporterTaskState(Enum):
     CREATED = "created"
     VALIDATING = "validating"
     VALIDATION_FAILED = "validated with failures"
+    VALIDATED = "validated"
     IMPORTING = "importing"
     IMPORT_FAILED = "imported with failures"
     SUCCESS = "success"
+    DAMAGED = "damaged"
 
 
 class TaskStateCalculator:
@@ -50,47 +51,59 @@ class TaskStateCalculator:
         Returns:
             Task state string
         """
+
+        def state_count(state: Enum) -> int:
+            """Helper function to get the count for a given state."""
+            return record_states.get(state.value, 0)
+
         total_records = record_states["total_records"]
+        # Extract counts for all ImporterRecordState values
+        created_count = state_count(ImporterRecordState.CREATED)
+        serializer_validation_failed_count = state_count(
+            ImporterRecordState.SERIALIZER_VALIDATION_FAILED
+        )
+        validation_failed_count = state_count(ImporterRecordState.VALIDATION_FAILED)
+        validated_count = state_count(ImporterRecordState.VALIDATED)
+        import_failed_count = state_count(ImporterRecordState.IMPORT_FAILED)
+        success_count = state_count(ImporterRecordState.IMPORTED)
 
         if total_records == 0:
             return ImporterTaskState.CREATED.value
 
-        # Check if all records are successful
-        success_count = record_states.get(ImporterRecordState.SUCCESS.value, 0)
-        if success_count == total_records:
-            return ImporterTaskState.SUCCESS.value
+        if created_count > 0 and (
+            serializer_validation_failed_count == 0
+            or validation_failed_count == 0
+            or validated_count == 0
+        ):
+            # If there are records that are created but not yet validated or imported
+            return ImporterTaskState.CREATED.value
 
-        # Check if any records are still validating
-        validating_count = record_states.get(ImporterRecordState.VALIDATING.value, 0)
-        created_count = record_states.get(ImporterRecordState.CREATED.value, 0)
-        if validating_count > 0 or created_count > 0:
+        if created_count > 0 and (
+            serializer_validation_failed_count > 0
+            or validation_failed_count > 0
+            or validated_count > 0
+        ):
+            # If there are records that are created but not yet validated or imported
             return ImporterTaskState.VALIDATING.value
 
-        # Check if any records are validated (ready to run)
-        validated_count = record_states.get(ImporterRecordState.VALIDATED.value, 0)
-        if validated_count > 0:
-            return ImporterTaskState.RUNNING.value
-
         # Check for validation failures
-        validation_failed = record_states.get(
-            ImporterRecordState.VALIDATION_FAILED.value, 0
-        )
-        serializer_failed = record_states.get(
-            ImporterRecordState.SERIALIZER_VALIDATION_FAILED.value, 0
-        )
-        if validation_failed > 0 or serializer_failed > 0:
-            if success_count > 0:
-                return ImporterTaskState.WARNINGS.value
-            else:
-                return ImporterTaskState.VALIDATION_FAILED.value
+        if validation_failed_count > 0 or serializer_validation_failed_count > 0:
+            return ImporterTaskState.VALIDATION_FAILED.value
+        # Check if all records are validated
+        if validated_count == total_records and created_count == 0:
+            return ImporterTaskState.VALIDATED.value
 
-        # Check for creation failures
-        import_failed = record_states.get(ImporterRecordState.IMPORT_FAILED.value, 0)
-        if import_failed > 0:
-            if success_count > 0:
-                return ImporterTaskState.WARNINGS.value
-            else:
-                return ImporterTaskState.FAILURE.value
+        if validated_count > 0 and (import_failed_count > 0 or success_count > 0):
+            # If there are records that are validated and currently being imported
+            return ImporterTaskState.IMPORTING.value
+
+        if validated_count == 0 and import_failed_count > 0:
+            # If there are records that failed to import but were validated
+            return ImporterTaskState.IMPORT_FAILED.value
+
+        if success_count == total_records:
+            # If all records were successfully imported
+            return ImporterTaskState.SUCCESS.value
 
         # Default fallback
-        return ImporterTaskState.CREATED.value
+        return ImporterTaskState.DAMAGED.value

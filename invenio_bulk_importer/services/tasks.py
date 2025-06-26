@@ -17,11 +17,16 @@ from flask import current_app
 from invenio_base.utils import obj_or_import_string
 from invenio_records_resources.tasks import system_identity
 
+from invenio_bulk_importer.services.states import (
+    ImporterRecordState,
+    TaskStateCalculator,
+)
+
 from ..proxies import current_importer_records_service as records_service
 from ..proxies import current_importer_tasks_service as tasks_service
 
 DEFAULT_IMPORER_RECORD_DICT = dict(
-    status="created",
+    status=ImporterRecordState.CREATED.value,
     errors=[],
     message=None,
     src_data=None,
@@ -71,7 +76,9 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
         )
         record_item = rdm_record.run(mode=task.get("mode"))
         importer_record_dict["status"] = (
-            "success" if rdm_record.is_successful else "creation failed"
+            ImporterRecordState.IMPORTED.value
+            if rdm_record.is_successful
+            else ImporterRecordState.IMPORT_FAILED.value
         )
         importer_record_dict["errors"] = rdm_record.errors
         importer_record_dict["generated_record_id"] = (
@@ -131,12 +138,16 @@ def validate_serialized_data(record_id_str: str, task_id_str: str):
         importer_record_dict["serializer_data"] = None
         importer_record_dict["transformed_data"] = None
         if serializer_errors:
-            importer_record_dict["status"] = "serializer validation failed"
+            importer_record_dict["status"] = (
+                ImporterRecordState.SERIALIZER_VALIDATION_FAILED.value
+            )
             importer_record_dict["errors"] = serializer_errors
         else:
             importer_record_dict["serializer_data"] = serializer_data
             importer_record_dict["status"] = (
-                "validated" if rdm_record.validate(mode=mode) else "validation failed"
+                ImporterRecordState.VALIDATED.value
+                if rdm_record.validate(mode=mode)
+                else ImporterRecordState.VALIDATION_FAILED.value
             )
             importer_record_dict["transformed_data"] = rdm_record.validated_record_dict
             importer_record_dict["errors"] = rdm_record.errors
@@ -200,7 +211,8 @@ def finalize_importer_task(task_id_str: str):
         # Update the task with the total number of records processed
         task_data = tasks_service.get_current_task_data(task)
         task_data["records_status"] = records_status
-        task_data["status"] = "validating"
+        # Calculate the task state based on the records status
+        task_data["status"] = TaskStateCalculator.calculate_task_state(records_status)
         tasks_service.update(system_identity, data=task_data, id_=task.id)
     except Exception as e:
         traceback.print_exc()

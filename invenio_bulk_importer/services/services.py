@@ -17,6 +17,8 @@ from invenio_records_resources.services.uow import (
     unit_of_work,
 )
 
+from invenio_bulk_importer.services.states import TaskStateCalculator
+
 from .tasks import (
     run_transformed_record,
     run_transformed_records,
@@ -75,15 +77,18 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         record_types = current_app.config["BULK_IMPORTER_RECORD_TYPES"]
         return list(record_types.keys())
 
-    def get_record_type_config(self, identity, record_type_str):
-        """Get the available serializers for a specific record type."""
-        self.require_permission(identity, "create")
+    def _get_record_type_config(self, record_type_str):
         record_types = current_app.config["BULK_IMPORTER_RECORD_TYPES"]
         record_type = record_types[record_type_str]
         return dict(
             serializers=list(record_type.get("serializers", {}).keys()),
             options=record_type.get("options", {}),
         )
+
+    def get_record_type_config(self, identity, record_type_str):
+        """Get the available serializers for a specific record type."""
+        self.require_permission(identity, "create")
+        return self._get_record_type_config(record_type_str)
 
     @unit_of_work()
     def delete_metadata_file(self, identity, id_, uow=None):
@@ -94,7 +99,7 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
     def start_validation(self, identity, id_, uow=None):
         """Load importer metadata for a record type using a specific serializer."""
         record = self.record_cls.pid.resolve(id_)
-        self.require_permission(identity, "read", record=record)
+        self.require_permission(identity, "create", record=record)
         # TODO: Validate Metadata file exists - throw error
 
         # Load the importer records with the specified serializer data.
@@ -108,8 +113,46 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             expandable_fields=self.expandable_fields,
         )
 
+    @unit_of_work()
+    def options_update(self, identity, id_, data, uow=None):
+        """Update the status of the importer task based on record status."""
+        task = self.record_cls.pid.resolve(id_)
+        self.require_permission(identity, "create", record=task)
+
+        # Update the task with the total number of records processed
+        task_data = self.get_current_task_data(task)
+        task_data["configs"] = data
+        # Update the task metadata
+        self._update_task_metadata(identity, task, task_data, uow=uow)
+
+        return self.result_item(
+            self,
+            identity,
+            task,
+            links_tpl=self.links_item_tpl,
+            expandable_fields=self.expandable_fields,
+        )
+
+    @unit_of_work()
+    def create(self, identity, data, uow=None, expand=False):
+        """Create a record.
+
+        Args:
+            identity: Identity of user creating the record.
+            data: Input data according to the data schema.
+            task_id: The ID of the importer task.
+            uow: Unit of work for database operations.
+            expand: Whether to expand the record with additional fields.
+        """
+        if not data.get("options"):
+            # Set default config options from selected record_type
+            configs = self._get_record_type_config(data.get("record_type"))
+            data["options"] = configs["options"]
+        return self._create(self.record_cls, identity, data, uow=uow, expand=expand)
+
+    @unit_of_work()
     def status_update(self, identity, id_, uow=None):
-        """Update the status of the importer task."""
+        """Update the status of the importer task based on record status."""
         task = self.record_cls.pid.resolve(id_)
         self.require_permission(identity, "create", record=task)
 
@@ -118,7 +161,8 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         task_data = self.get_current_task_data(task)
         task_data["records_status"] = records_status
         # Determine Status update of task based on record statuses.
-        task_data["status"] = "validating"
+        task_status = TaskStateCalculator.calculate_task_state(records_status)
+        task_data["status"] = task_status
         # Update the task metadata
         self._update_task_metadata(identity, task, task_data, uow=uow)
 

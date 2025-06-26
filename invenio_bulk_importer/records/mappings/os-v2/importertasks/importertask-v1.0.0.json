@@ -48,6 +48,10 @@
         "end_time": {
           "type": "date"
         },
+        "options": {
+          "type": "object",
+          "dynamic": true
+        },
         "started_by_id": {
           "type": "keyword"
         },

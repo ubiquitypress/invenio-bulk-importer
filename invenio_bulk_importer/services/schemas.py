@@ -7,12 +7,17 @@
 #
 
 """Importer Task Service Schema."""
+
+from enum import Enum
+
 import marshmallow as ma
 from invenio_i18n import gettext as _
 from invenio_records_resources.services.records.schema import (
     BaseRecordSchema as InvenioBaseRecordSchema,
 )
 from marshmallow_utils.fields import NestedAttribute, SanitizedUnicode
+
+from .states import ImporterRecordState, ImporterTaskState
 
 
 class FilesSchema(ma.Schema):
@@ -47,47 +52,28 @@ def validate_mode(value):
         )
 
 
-def validate_record_status(value):
-    """Check if the value is a valid status setting."""
-    if value not in [
-        "created",
-        "creation failed",
-        "validating",
-        "serializer validation failed",
-        "validation failed",
-        "validated",
-        "success",
-        "stopped",
-    ]:
+def _validate_status(value: str, enum_state: Enum):
+    """Check if the value is within a enum as a value."""
+    if value not in [state.value for state in enum_state]:
         raise ma.ValidationError(
             message=str(
                 _(
-                    f"Value '{value}' must be one of: 'created', 'validating', 'running', 'success', 'failure', 'stopped', 'archived', or 'warnings'."
+                    f"Value '{value}' must be one of: "
+                    + ", ".join(f"'{state.value}'" for state in enum_state)
+                    + "."
                 )
             )
         )
+
+
+def validate_record_status(value):
+    """Check if the value is a valid importer record status."""
+    _validate_status(value, ImporterRecordState)
 
 
 def validate_task_status(value):
-    """Check if the value is a valid status setting."""
-    if value not in [
-        "created",
-        "validating",
-        "validation failed",
-        "running",
-        "success",
-        "failure",
-        "stopped",
-        "archived",
-        "warnings",
-    ]:
-        raise ma.ValidationError(
-            message=str(
-                _(
-                    "Value must be one of: 'created', 'validating', 'running', 'success', 'failure', 'stopped', 'archived', or 'warnings'."
-                )
-            )
-        )
+    """Check if the value is a valid importer task status."""
+    _validate_status(value, ImporterTaskState)
 
 
 class UserSchema(ma.Schema):
@@ -120,20 +106,34 @@ class ImporterTaskSchema(InvenioBaseRecordSchema):
         validate=ma.validate.Length(max=1000),
     )
     mode = ma.fields.String(validate=validate_mode, required=True)
+    """The mode is the type of import to be performed, e.g., 'import' or 'delete'."""
     record_type = ma.fields.String(
         required=True,
         validate=ma.validate.Length(min=1, max=255),
     )
+    """The record_type is the type of record to be imported, e.g., 'record'.
+    See BULK_IMPORTER_RECORD_TYPES config."""
     serializer = ma.fields.String(
         required=True,
         validate=ma.validate.Length(min=1, max=255),
     )
+    """The serializer is the name of the serializer type to be used to
+    validate input data." See BULK_IMPORTER_RECORD_TYPES config."""
     start_time = ma.fields.DateTime(allow_none=True)
     end_time = ma.fields.DateTime(allow_none=True)
     records_status = ma.fields.Dict(allow_none=True)
+    """The records_status is a dictionary containing the total number of
+    importer records and sum of records in particular statuses
+    that are associated n the importer task."""
     status = ma.fields.String(validate=validate_task_status, required=True)
+    """The status of the complete importer task."""
     files = NestedAttribute(FilesSchema)
     started_by = ma.fields.Nested(UserSchema, dump_only=True)
+    """The user who started the importer task."""
+    options = ma.fields.Dict(
+        allow_none=True,
+        description="Configuration options for the importer task setup record_type selected.",
+    )
 
 
 class RelatedImporterTaskSchema(ma.Schema):

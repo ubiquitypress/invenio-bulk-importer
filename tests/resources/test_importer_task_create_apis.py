@@ -42,6 +42,10 @@ def test_importer_task_with_create(
         assert response.json["record_type"] == "record"
         assert response.json["serializer"] == "csv"
         assert response.json["status"] == "created"
+        assert response.json["options"] == {
+            "doi_minting": False,
+            "publish": True,
+        }
 
     # Add Metadata File to importer task.
     local_dir = os.path.dirname(__file__)
@@ -128,6 +132,8 @@ def test_importer_task_with_create(
             response.json["metadata"]["title"]
             == "Micraster ernsti Schlüter 2024, sp. nov."
         )
+        print(response.json["parent"]["pids"])
+        print(response.json["pids"])
         assert response.json["versions"]["index"] == 1
         assert response.json["status"] == "published"
         assert response.json["files"]["entries"]["xml.xsd"]["size"] == 1663

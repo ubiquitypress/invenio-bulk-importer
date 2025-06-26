@@ -54,6 +54,7 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
         "config-item": "/config/<record_type>",
         "item-validate": "/<pid_value>/validate",
         "item-load": "/<pid_value>/load",
+        "item-status": "/<pid_value>/status",
     }
 
     error_handlers = FromConfig(

@@ -106,7 +106,7 @@ def test_starting_validation(app, db, user_admin, task, community, search_clear)
     all_tasks = tasks_service.search(user_admin.identity)
     assert all_tasks.total == 1
     hits = list(all_tasks.hits)
-    assert hits[0]["status"] == "validating"
+    assert hits[0]["status"] == "validated with failures"
     assert hits[0]["records_status"] == {
         "serializer validation failed": 1,
         "total_records": 3,

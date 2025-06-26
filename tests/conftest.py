@@ -14,6 +14,7 @@ from collections import namedtuple
 from copy import deepcopy
 from io import BytesIO, StringIO
 
+import idutils
 import pytest
 from flask_principal import AnonymousIdentity
 from invenio_access.models import ActionRoles
@@ -157,6 +158,18 @@ def app_config(app_config, mock_datacite_client):
             label=_("Concept DOI"),
         ),
     ]
+    app_config["RDM_PARENT_PERSISTENT_IDENTIFIERS"] = {
+        "doi": {
+            "providers": ["datacite"],
+            "required": True,
+            "condition": lambda rec: rec.pids.get("doi", {}).get("provider")
+            == "datacite",
+            "label": _("Concept DOI"),
+            "validator": idutils.is_doi,
+            "normalizer": idutils.normalize_doi,
+            "is_enabled": providers.DataCitePIDProvider.is_enabled,
+        },
+    }
     app_config["APP_RDM_ROUTES"] = {
         "record_detail": "/records/<pid_value>",
         "record_file_download": "/records/<pid_value>/files/<path:filename>",
