@@ -59,6 +59,7 @@ invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
 [project.entry-points."invenio_base.api_blueprints"]
 invenio_bulk_importer_ext = "invenio_bulk_importer.views:blueprint"
 invenio_bulk_importer_tasks_api = "invenio_bulk_importer.views:create_tasks_bp"
+invenio_bulk_importer_task_files_api = "invenio_bulk_importer.views:create_task_files_bp"
 invenio_bulk_importer_records_api = "invenio_bulk_importer.views:create_records_bp"
 
 [project.entry-points."invenio_base.blueprints"]
@@ -79,6 +80,9 @@ importerrecords = "invenio_bulk_importer.records.mappings"
 
 [project.entry-points."invenio_i18n.translations"]
 messages = "invenio_bulk_importer"
+
+[project.entry-points."invenio_base.api_finalize_app"]
+invenio_bulk_importer = "invenio_bulk_importer.ext:api_finalize_app"
 
 [tool.setuptools]
 include-package-data = true

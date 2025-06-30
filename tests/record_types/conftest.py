@@ -11,7 +11,24 @@
 import pytest
 from invenio_files_rest.models import Bucket, ObjectVersion
 
+from invenio_bulk_importer.proxies import (
+    current_importer_records_service as importer_records_service,
+)
 from invenio_bulk_importer.record_types.rdm import RDMRecord as BulkImportRDMRecord
+
+
+def _generate_rdm_record(
+    bucket_id=None, importer_record=None, serialized_record=None, serialized_errors=None
+):
+    """Generate a BulkImportRDMRecord instance."""
+    return BulkImportRDMRecord(
+        (
+            serialized_record,
+            serialized_errors,
+        ),
+        bucket_id=bucket_id,
+        importer_record=importer_record,
+    )
 
 
 @pytest.fixture
@@ -31,72 +48,96 @@ def bucket_with_object_version(db, location):
 
 
 @pytest.fixture
-def validated_rdm_record_instance_with_community(valid_importer_record_with_community):
-    """Fixture to create an RDMRecord instance, with community."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            None,
-            None,
-        ),
-        importer_record=valid_importer_record_with_community._obj,
+def validated_rdm_record_instance_no_doi(
+    task, user_admin, validated_ir_data_with_community
+):
+    """Fixture to create importer record, with files and no community required."""
+    validated_ir_data_with_community["transformed_data"]["pids"] = {}
+    r = importer_records_service.create(
+        user_admin.identity, data=validated_ir_data_with_community, task_id=task.id
     )
-    return rdm_record
+    return _generate_rdm_record(importer_record=r._obj)
+
+
+@pytest.fixture
+def validated_rdm_record_instance(task, user_admin, validated_ir_data):
+    """Fixture to create importer record, with files and no community required."""
+    r = importer_records_service.create(
+        user_admin.identity, data=validated_ir_data, task_id=task.id
+    )
+    return _generate_rdm_record(importer_record=r._obj)
+
+
+@pytest.fixture
+def validated_rdm_record_instance_no_files(task, user_admin, validated_ir_data):
+    """Fixture to create importer record, with no files or community required."""
+    validated_ir_data["validated_record_files"] = None
+    validated_ir_data["transformed_data"]["files"] = {"enabled": False}
+    r = importer_records_service.create(
+        user_admin.identity,
+        data=validated_ir_data,
+        task_id=task.id,
+    )
+
+    return _generate_rdm_record(importer_record=r._obj)
+
+
+@pytest.fixture
+def validated_rdm_record_instance_with_community(
+    task, user_admin, validated_ir_data_with_community
+):
+    """Fixture to create importer task, with community required."""
+    r = importer_records_service.create(
+        user_admin.identity,
+        data=validated_ir_data_with_community,
+        task_id=task.id,
+    )
+
+    return _generate_rdm_record(importer_record=r._obj)
 
 
 @pytest.fixture
 def validated_edit_rdm_record_instance_with_community(
-    valid_edit_importer_record_with_community,
+    task, user_admin, validated_ir_data_with_community, record
 ):
-    """Fixture to create an RDMRecord instance, with community."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            None,
-            None,
-        ),
-        importer_record=valid_edit_importer_record_with_community._obj,
+    """Fixture to create importer task, with community required and existing record.
+
+    This will generate a new_version update to record
+    You will need to alter the pids as expects new pid and existing_record_id has to be populated.
+    """
+    validated_ir_data_with_community["transformed_data"]["pids"] = {
+        "doi": {"identifier": "10.5281/zenodo.10572733", "provider": "external"}
+    }
+    validated_ir_data_with_community["existing_record_id"] = str(record.id)
+    """Fixture to create importer task, with community required."""
+    r = importer_records_service.create(
+        user_admin.identity,
+        data=validated_ir_data_with_community,
+        task_id=task.id,
     )
-    return rdm_record
+
+    return _generate_rdm_record(importer_record=r._obj)
 
 
 @pytest.fixture
 def validated_edit_rdm_record_instance_with_community_and_no_files(
-    valid_edit_importer_record_with_community_no_file,
+    task, user_admin, validated_ir_data_with_community, record
 ):
-    """Fixture to create an RDMRecord instance, with community."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            None,
-            None,
-        ),
-        importer_record=valid_edit_importer_record_with_community_no_file._obj,
+    """Fixture to create importer task, with community required, NO files and existing record.
+
+    This will generate a edit to the current version, and increment the revision.
+    PIDS need to stay the same.
+    """
+    validated_ir_data_with_community["existing_record_id"] = str(record.id)
+    validated_ir_data_with_community["validated_record_files"] = None
+    validated_ir_data_with_community["transformed_data"]["files"] = {"enabled": False}
+    """Fixture to create importer task, with community required."""
+    r = importer_records_service.create(
+        user_admin.identity,
+        data=validated_ir_data_with_community,
+        task_id=task.id,
     )
-    return rdm_record
-
-
-@pytest.fixture
-def validated_rdm_record_instance_no_files(valid_importer_record_no_files):
-    """Fixture to create an RDMRecord instance."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            None,
-            None,
-        ),
-        importer_record=valid_importer_record_no_files._obj,
-    )
-    return rdm_record
-
-
-@pytest.fixture
-def validated_rdm_record_instance(valid_importer_record):
-    """Fixture to create an RDMRecord instance."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            None,
-            None,
-        ),
-        importer_record=valid_importer_record._obj,
-    )
-    return rdm_record
+    return _generate_rdm_record(importer_record=r._obj)
 
 
 @pytest.fixture
@@ -370,24 +411,14 @@ def serialized_record():
 @pytest.fixture
 def rdm_record_instance(bucket_with_object_version, serialized_record):
     """Fixture to create an RDMRecord instance."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            serialized_record,
-            None,
-        ),
-        bucket_with_object_version.id,
+    return _generate_rdm_record(
+        bucket_id=bucket_with_object_version, serialized_record=serialized_record
     )
-    return rdm_record
 
 
 @pytest.fixture
 def valid_rdm_record_instance(bucket_with_object_version, valid_serialized_record):
     """Fixture to create an RDMRecord instance."""
-    rdm_record = BulkImportRDMRecord(
-        (
-            valid_serialized_record,
-            None,
-        ),
-        bucket_with_object_version.id,
+    return _generate_rdm_record(
+        bucket_id=bucket_with_object_version, serialized_record=valid_serialized_record
     )
-    return rdm_record

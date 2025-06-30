@@ -10,8 +10,8 @@
 
 import traceback
 
+from flask import current_app
 from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.records.api import RDMRecord as InvenioRDMRecord
 from invenio_records_resources.services.uow import unit_of_work
 from invenio_records_resources.tasks import system_identity
 from invenio_requests.proxies import current_requests_service
@@ -95,11 +95,13 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                     if isinstance(error, list):
                         for err_msg in error:
                             self._add_error(
-                                dict(type="validation_error", loc=prefix, msg=error)
+                                dict(
+                                    type="validation_error", loc=prefix, msg=str(error)
+                                )
                             )
                     else:
                         self._add_error(
-                            dict(type="validation_error", loc=prefix, msg=error)
+                            dict(type="validation_error", loc=prefix, msg=str(error))
                         )
         elif isinstance(errors, list):
             # Handle list of errors
@@ -111,7 +113,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                 # List of string error messages
                 for error in errors:
                     self._add_error(
-                        dict(type="validation_error", loc=prefix, msg=error)
+                        dict(type="validation_error", loc=prefix, msg=str(error))
                     )
 
     def validate(self, mode: str) -> bool:
@@ -194,6 +196,14 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
 
     def _doi_minting(self, record_item, data, uow):
         """Check if DOI minting and pid required then get doi from provider."""
+        if not current_app.config["DATACITE_ENABLED"]:
+            # If the datacite is not enabled, skip DOI minting.
+            return
+        # Check doi setup
+        if current_app.config["RDM_PERSISTENT_IDENTIFIERS"]["doi"]["required"]:
+            # Will automatically create a DOI if required.
+            return
+
         if self.options.get("doi_minting") and "doi" not in data.get("pids", {}):
             # if pids doesn't have an external doi and minted config is set to True
             current_rdm_records_service.pids.create(
@@ -353,7 +363,6 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                             msg=f"Error uploading and commiting '{file_key}' to record '{record_item.id}': {str(e)}",
                         )
                     )
-                    print(self._errors)
                     raise
         except Exception as e:
             self._add_error(
@@ -363,7 +372,6 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                     msg=f"Error initializing file for '{record_item.id}': {str(e)}",
                 )
             )
-            print(self._errors)
             raise
 
     def _add_record_to_communities(self, community_uuids: dict, record, uow) -> None:
@@ -419,7 +427,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         if community_uuids:
             self._add_record_to_communities(community_uuids, record_item, uow)
         else:
-            if self.options.get("publish_record", True):
+            if self.options.get("publish", True):
                 # If no communities specified, publish globally.
                 current_rdm_records_service.publish(
                     system_identity,

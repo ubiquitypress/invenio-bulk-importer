@@ -6,14 +6,16 @@
 # modify it under the terms of the MIT License; see LICENSE file for more
 # details.
 
-"""Bulk creation, import, and/or edittion of record and files for Invenio.."""
+"""Bulk creation, import, and/or edittion of record and files for Invenio."""
 
+from invenio_records_resources.resources.files import FileResource
 from invenio_records_resources.services import FileService
 
 from . import config
 from .resources import (
     ImporterRecordResource,
     ImporterRecordResourceConfig,
+    ImporterTaskFilesResourceConfig,
     ImporterTaskResource,
     ImporterTaskResourceConfig,
 )
@@ -35,6 +37,7 @@ class InvenioBulkImporter(object):
         self.records_service = None
         self.records_resource = None
         self.tasks_resource = None
+        self.task_files_resource = None
         if app:
             self.init_app(app)
 
@@ -73,28 +76,55 @@ class InvenioBulkImporter(object):
             config=ImporterTaskResourceConfig.build(app),
             service=self.tasks_service,
         )
+        # Im,porter Task files resource
+        self.task_files_resource = FileResource(
+            service=self.tasks_service.files,
+            config=ImporterTaskFilesResourceConfig.build(app),
+        )
         self.records_resource = ImporterRecordResource(
             config=ImporterRecordResourceConfig.build(app),
             service=self.records_service,
         )
 
 
-# def api_finalize_app(app):
-#     """Finalize app for api.
-
-#     NOTE: replace former @record_once decorator
-#     """
-#     init(app)
+def api_finalize_app(app):
+    """Finalize app for api."""
+    init(app)
 
 
-# def init(app):
-#     ext = app.extensions["invenio-bulk-loader"]
-#     service_id = ext.tasks_service.config.service_id
-#     # register service
-#     sregistry = app.extensions["invenio-records-resources"].registry
-#     sregistry.register(
-#         ext.tasks_service, service_id=service_id
-#     )
-#     # Register indexers
-#     iregistry = app.extensions["invenio-indexer"].registry
-#     iregistry.register(ext.records_service.indexer, indexer_id=service_id)
+def init(app):
+    """Register services in the service registry."""
+    ext = app.extensions["invenio-bulk-importer"]
+
+    # Get the service registry
+    sregistry = app.extensions["invenio-records-resources"].registry
+
+    # Register the main task service
+    sregistry.register(
+        ext.tasks_service, service_id=ext.tasks_service.config.service_id
+    )
+
+    # Register the task files service
+    sregistry.register(
+        ext.tasks_service.files,
+        service_id=ext.tasks_service.files.config.service_id,
+    )
+
+    # Register the records service
+    sregistry.register(
+        ext.records_service, service_id=ext.records_service.config.service_id
+    )
+
+    # Register indexers if you have them
+    if hasattr(app.extensions, "invenio-indexer"):
+        iregistry = app.extensions["invenio-indexer"].registry
+        if hasattr(ext.tasks_service, "indexer"):
+            iregistry.register(
+                ext.tasks_service.indexer,
+                indexer_id=ext.tasks_service.config.service_id,
+            )
+        if hasattr(ext.records_service, "indexer"):
+            iregistry.register(
+                ext.records_service.indexer,
+                indexer_id=ext.records_service.config.service_id,
+            )

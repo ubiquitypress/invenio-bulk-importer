@@ -50,6 +50,8 @@ class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
 class ImporterTaskFileServiceConfig(FileServiceConfig, ConfiguratorMixin):
     """Importer task file record service config."""
 
+    service_id = "importertaskfiles"
+
     permission_policy_cls = ImporterTaskPermissionPolicy
 
     record_cls = ImporterTask

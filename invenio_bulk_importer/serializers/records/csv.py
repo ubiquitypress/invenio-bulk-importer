@@ -282,6 +282,8 @@ class MetadataSchema(BaseModel):
 
         subjects_service = current_service_registry.get("subjects")
         for subject, scheme in zip(subjects, schemes):
+            if subject.strip() == "":
+                continue
             hits = subjects_service.search(
                 system_identity,
                 params={"q": f'subject:"{subject}" AND scheme:"{scheme}"'},

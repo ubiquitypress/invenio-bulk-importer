@@ -50,11 +50,11 @@ def test_create_importer_record(
 
 
 def test_run_transformed_record(
-    app, db, user_admin, valid_importer_record_no_files_one_community, search_clear
+    app, db, user_admin, validated_ir_instance_no_files_one_community, search_clear
 ):
     assert_counts(buckets=2, objs=2, fileinstances=2)
     record_item = current_importer_records_service.start_run(
-        user_admin.identity, id_=valid_importer_record_no_files_one_community.id
+        user_admin.identity, id_=validated_ir_instance_no_files_one_community.id
     )
     # Wait for 3 seconds
     time.sleep(3)

@@ -10,6 +10,7 @@
 
 from .config import (
     ImporterRecordResourceConfig,
+    ImporterTaskFilesResourceConfig,
     ImporterTaskResourceConfig,
 )
 from .resources import ImporterRecordResource, ImporterTaskResource
@@ -17,6 +18,7 @@ from .resources import ImporterRecordResource, ImporterTaskResource
 __all__ = (
     "ImporterRecordResource",
     "ImporterRecordResourceConfig",
+    "ImporterTaskFilesResourceConfig",
     "ImporterTaskResource",
     "ImporterTaskResourceConfig",
 )

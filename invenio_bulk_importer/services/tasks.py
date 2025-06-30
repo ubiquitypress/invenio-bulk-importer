@@ -98,12 +98,12 @@ def run_transformed_record(record_id_str: str, task_id_str: str):
 
 
 @shared_task(ignore_result=True)
-def run_transformed_records(task_id_str: str, status_list: list[str] = None):
+def run_transformed_records(task_id_str: str):
     """Load importer metadata for a record type using a specific serializer."""
     try:
         task, _, _ = _get_importer_task_classes(task_id_str)
         # Validate entries from the metadata file
-        for record_id_str in task.get_records(status_list=status_list):
+        for record_id_str in task.get_records():
             run_transformed_record.delay(
                 record_id_str=record_id_str,
                 task_id_str=task_id_str,

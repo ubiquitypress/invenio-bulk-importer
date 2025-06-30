@@ -8,14 +8,11 @@
 
 """View blueprints for Invenio Bulk Importer."""
 
-from .api import (
-    blueprint,
-    create_records_bp,
-    create_tasks_bp,
-)
+from .api import blueprint, create_records_bp, create_task_files_bp, create_tasks_bp
 
 __all__ = (
     "blueprint",
     "create_records_bp",
+    "create_task_files_bp",
     "create_tasks_bp",
 )

@@ -17,7 +17,11 @@ from invenio_records_resources.services.uow import (
     unit_of_work,
 )
 
-from invenio_bulk_importer.services.states import TaskStateCalculator
+from invenio_bulk_importer.errors import ImporterTaskNoReadyError
+from invenio_bulk_importer.services.states import (
+    ImporterTaskState,
+    TaskStateCalculator,
+)
 
 from .tasks import (
     run_transformed_record,
@@ -50,13 +54,22 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         super().__init__(config)
         self._files = files_service
 
-    #
-    # Subservices
-    #
-    @property
-    def files(self):
-        """Record files service."""
-        return self._files
+    @unit_of_work()
+    def create(self, identity, data, uow=None, expand=False):
+        """Create a record.
+
+        Args:
+            identity: Identity of user creating the record.
+            data: Input data according to the data schema.
+            task_id: The ID of the importer task.
+            uow: Unit of work for database operations.
+            expand: Whether to expand the record with additional fields.
+        """
+        if not data.get("options"):
+            # Set default config options from selected record_type
+            configs = self._get_record_type_config(data.get("record_type"))
+            data["options"] = configs["options"]
+        return self._create(self.record_cls, identity, data, uow=uow, expand=expand)
 
     def read_metadata_file(self, identity, id_):
         """Read the importer task metadata file."""
@@ -100,9 +113,10 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         """Load importer metadata for a record type using a specific serializer."""
         record = self.record_cls.pid.resolve(id_)
         self.require_permission(identity, "create", record=record)
-        # TODO: Validate Metadata file exists - throw error
-
-        # Load the importer records with the specified serializer data.
+        if not record["serializer"] or not record["record_type"]:
+            raise ImporterTaskNoReadyError(
+                "Serializer and record_type must be set for validation."
+            )
         valid_importer_file_data.delay(str(record.id))
 
         return self.result_item(
@@ -115,16 +129,15 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
 
     @unit_of_work()
     def options_update(self, identity, id_, data, uow=None):
-        """Update the status of the importer task based on record status."""
+        """Update the options of the importer task based on record_type options."""
         task = self.record_cls.pid.resolve(id_)
         self.require_permission(identity, "create", record=task)
 
         # Update the task with the total number of records processed
         task_data = self.get_current_task_data(task)
-        task_data["configs"] = data
+        task_data["options"] = data
         # Update the task metadata
         self._update_task_metadata(identity, task, task_data, uow=uow)
-
         return self.result_item(
             self,
             identity,
@@ -132,23 +145,6 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             links_tpl=self.links_item_tpl,
             expandable_fields=self.expandable_fields,
         )
-
-    @unit_of_work()
-    def create(self, identity, data, uow=None, expand=False):
-        """Create a record.
-
-        Args:
-            identity: Identity of user creating the record.
-            data: Input data according to the data schema.
-            task_id: The ID of the importer task.
-            uow: Unit of work for database operations.
-            expand: Whether to expand the record with additional fields.
-        """
-        if not data.get("options"):
-            # Set default config options from selected record_type
-            configs = self._get_record_type_config(data.get("record_type"))
-            data["options"] = configs["options"]
-        return self._create(self.record_cls, identity, data, uow=uow, expand=expand)
 
     @unit_of_work()
     def status_update(self, identity, id_, uow=None):
@@ -178,10 +174,27 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
     def start_loading_records(self, identity, id_, uow=None):
         """Start the load of the importer task to create a new invenio record."""
         record = self.record_cls.pid.resolve(id_)
-        self.require_permission(identity, "read", record=record)
-
+        self.require_permission(identity, "create", record=record)
+        # Check task is ready to create records.
+        if record["status"] != ImporterTaskState.VALIDATED.value:
+            raise ImporterTaskNoReadyError("Importer Task in wrong status to proceed.")
         # Start loading the
-        run_transformed_records.delay(str(record.id), ["validated"])
+        run_transformed_records.delay(str(record.id))
+        return self.result_item(
+            self,
+            identity,
+            record,
+            links_tpl=self.links_item_tpl,
+            expandable_fields=self.expandable_fields,
+        )
+
+    #
+    # Subservices
+    #
+    @property
+    def files(self):
+        """Record files service."""
+        return self._files
 
     #
     # Private methods

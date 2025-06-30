@@ -27,3 +27,8 @@ def create_records_bp(app):
     """Creates a blueprint for the bulk importer records resource."""
     blueprint = app.extensions["invenio-bulk-importer"].records_resource.as_blueprint()
     return blueprint
+
+
+def create_task_files_bp(app):
+    """Create importer task files blueprint."""
+    return app.extensions["invenio-bulk-importer"].task_files_resource.as_blueprint()

@@ -25,6 +25,10 @@ def test_create_importer_task(
     assert task_data["status"] == minimal_importer_task["status"]
     assert task_data["record_type"] == minimal_importer_task["record_type"]
     assert task_data["serializer"] == minimal_importer_task["serializer"]
+    assert task_data["options"] == {
+        "doi_minting": False,
+        "publish": True,
+    }
     # Check start_by_id is set from component running.
     task_model_instance = db.session.get(ImporterTaskModel, task.id)
     assert task_model_instance.started_by_id == int(user_admin.id)
@@ -36,6 +40,8 @@ def test_create_importer_task(
     assert all_tasks.total == 1
     hits = list(all_tasks.hits)
     assert hits[0] == task.data
+
+    # Add metadata file to importer task.
     stream = BytesIO(b"csvdata")
     metadata_file_item = tasks_service.update_metadata_file(
         user_admin.identity,

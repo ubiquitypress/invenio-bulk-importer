@@ -8,11 +8,9 @@
 
 """General fixtures."""
 
-import csv
 import os
 from collections import namedtuple
-from copy import deepcopy
-from io import BytesIO, StringIO
+from io import BytesIO
 
 import idutils
 import pytest
@@ -45,9 +43,6 @@ from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
 
-from invenio_bulk_importer.proxies import (
-    current_importer_records_service as importer_records_service,
-)
 from invenio_bulk_importer.proxies import (
     current_importer_tasks_service as importer_tasks_service,
 )
@@ -168,6 +163,24 @@ def app_config(app_config, mock_datacite_client):
             "validator": idutils.is_doi,
             "normalizer": idutils.normalize_doi,
             "is_enabled": providers.DataCitePIDProvider.is_enabled,
+        },
+    }
+    app_config["RDM_PERSISTENT_IDENTIFIERS"] = {
+        # DOI automatically removed if DATACITE_ENABLED is False.
+        "doi": {
+            "providers": ["datacite", "external"],
+            "required": True,
+            "label": _("DOI"),
+            "validator": idutils.is_doi,
+            "normalizer": idutils.normalize_doi,
+            "is_enabled": providers.DataCitePIDProvider.is_enabled,
+            "ui": {"default_selected": "yes"},  # "yes", "no" or "not_needed"
+        },
+        "oai": {
+            "providers": ["oai"],
+            "required": True,
+            "label": _("OAI"),
+            "is_enabled": providers.OAIPIDProvider.is_enabled,
         },
     }
     app_config["APP_RDM_ROUTES"] = {
@@ -1044,115 +1057,12 @@ def task(running_app, user_admin, minimal_importer_task, app_config):
     return r
 
 
-def _create_task_with_csv_updates(
-    csv_file_path: str,
-    task_data: dict,
-    csv_updates: dict,  # Dictionary of column: value pairs to update
-    identity,
-    delete: bool = False,
-):
-    """Helper function to create task with CSV updates."""
-    task = importer_tasks_service.create(identity, data=task_data)
-
-    with open(csv_file_path, "r", newline="", encoding="utf-8") as file:
-        csv_reader = csv.DictReader(file)
-        fieldnames = csv_reader.fieldnames
-        updated_rows = []
-        for row in csv_reader:
-            updated_row = dict(row)
-            if (
-                not delete
-                and csv_updates
-                and updated_row["resource_type.id"] == "dataset"
-            ):
-                # Apply all updates
-                updated_row.update(csv_updates)
-            if delete:
-                updated_row.update(csv_updates)
-            updated_rows.append(updated_row)
-    # Create and upload updated CSV
-    output = StringIO()
-    csv_writer = csv.DictWriter(output, fieldnames=fieldnames)
-    csv_writer.writeheader()
-    csv_writer.writerows(updated_rows)
-    csv_stream = BytesIO(output.getvalue().encode("utf-8"))
-    csv_stream.seek(0)
-    importer_tasks_service.update_metadata_file(
-        identity,
-        task.id,
-        "rdm_records.csv",
-        csv_stream,
-        content_length=csv_stream.getbuffer().nbytes,
-    )
-    # Add other files needed for records to be created
-    content = BytesIO(b"test file content")
-    result = importer_tasks_service._update_file(
-        identity, task.id, content, "article", ".txt"
-    )
-    assert result.to_dict()["key"] == "article.txt"
-    ImporterTask.index.refresh()
-    return task
-
-
-@pytest.fixture()
-def create_task(running_app, db, user_admin, minimal_importer_task, record):
-    """Create an importer taskwith a record to be created."""
-    version_task_data = deepcopy(minimal_importer_task)
-    file_path = os.path.join(f"{os.path.dirname(__file__)}/data", "rdm_records.csv")
-    return _create_task_with_csv_updates(
-        csv_file_path=file_path,
-        task_data=version_task_data,
-        csv_updates={},
-        identity=user_admin.identity,
-    )
-
-
-@pytest.fixture()
-def edit_version_task(running_app, db, user_admin, minimal_importer_task, record):
-    """Create an importer taskwith a record to be version updated."""
-    version_task_data = deepcopy(minimal_importer_task)
-    file_path = os.path.join(f"{os.path.dirname(__file__)}/data", "rdm_records.csv")
-    return _create_task_with_csv_updates(
-        csv_file_path=file_path,
-        task_data=version_task_data,
-        csv_updates={"id": str(record.id), "doi": "10.5281/zenodo.105727344"},
-        identity=user_admin.identity,
-    )
-
-
-@pytest.fixture()
-def edit_revision_task(running_app, db, user_admin, minimal_importer_task, record):
-    """Create an importer task with a record to be revision updated."""
-    version_task_data = deepcopy(minimal_importer_task)
-    file_path = os.path.join(f"{os.path.dirname(__file__)}/data", "rdm_records.csv")
-    return _create_task_with_csv_updates(
-        csv_file_path=file_path,
-        task_data=version_task_data,
-        csv_updates={"id": str(record.id), "filenames": ""},
-        identity=user_admin.identity,
-    )
-
-
-@pytest.fixture()
-def delete_task(running_app, db, user_admin, minimal_importer_task, record):
-    """Create an importer task for deletion of an exisiting record."""
-    version_task_data = deepcopy(minimal_importer_task)
-    version_task_data.update({"mode": "delete"})
-    file_path = os.path.join(
-        f"{os.path.dirname(__file__)}/data", "rdm_records_delete.csv"
-    )
-    return _create_task_with_csv_updates(
-        csv_file_path=file_path,
-        task_data=version_task_data,
-        csv_updates={"id": record.id},
-        identity=user_admin.identity,
-        delete=True,
-    )
-
-
 @pytest.fixture
-def valid_importer_task_data():
-    """Valid importer task data for testing."""
+def validated_ir_data():
+    """Validated importer record data for testing.
+
+    Has been processed successfully via validation of serializer and record_type.
+    """
     return {
         "status": "validated",
         "src_data": {
@@ -1444,117 +1354,10 @@ def valid_importer_task_data():
 
 
 @pytest.fixture
-def valid_importer_task_data_with_community(valid_importer_task_data, community):
+def validated_ir_data_with_community(validated_ir_data, community):
     """Fixture to create valid importer task data, with community required."""
-    valid_importer_task_data["community_uuids"] = {
+    validated_ir_data["community_uuids"] = {
         "default": community.id,
         "ids": [community.id],
     }
-    return valid_importer_task_data
-
-
-@pytest.fixture
-def valid_importer_record(task, user_admin, valid_importer_task_data):
-    """Fixture to create importer task, with no community required."""
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data,
-        task_id=task.id,
-    )
-
-    return r
-
-
-@pytest.fixture
-def valid_importer_record_no_files(task, user_admin, valid_importer_task_data):
-    """Fixture to create importer task, with no files or community required."""
-    valid_importer_task_data["validated_record_files"] = None
-    valid_importer_task_data["transformed_data"]["files"] = {"enabled": False}
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data,
-        task_id=task.id,
-    )
-
-    return r
-
-
-@pytest.fixture
-def valid_importer_record_no_files_one_community(
-    task, user_admin, valid_importer_task_data, community
-):
-    """Fixture to create importer task, with no files or community required."""
-    valid_importer_task_data["validated_record_files"] = None
-    valid_importer_task_data["transformed_data"]["files"] = {"enabled": False}
-    valid_importer_task_data["community_uuids"] = {
-        "default": community.id,
-        "ids": [community.id],
-    }
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data,
-        task_id=task.id,
-    )
-
-    return r
-
-
-@pytest.fixture
-def valid_importer_record_with_community(
-    task, user_admin, valid_importer_task_data_with_community
-):
-    """Fixture to create importer task, with community required."""
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data_with_community,
-        task_id=task.id,
-    )
-
-    return r
-
-
-@pytest.fixture
-def valid_edit_importer_record_with_community(
-    task, user_admin, valid_importer_task_data_with_community, record
-):
-    """Fixture to create importer task, with community required and existing record.
-
-    This will generate a new_version update to record
-    You will need to alter the pids as expects new pid and existing_record_id has to be populated.
-    """
-    valid_importer_task_data_with_community["transformed_data"]["pids"] = {
-        "doi": {"identifier": "10.5281/zenodo.10572733", "provider": "external"}
-    }
-    valid_importer_task_data_with_community["existing_record_id"] = str(record.id)
-    """Fixture to create importer task, with community required."""
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data_with_community,
-        task_id=task.id,
-    )
-
-    return r
-
-
-@pytest.fixture
-def valid_edit_importer_record_with_community_no_file(
-    task, user_admin, valid_importer_task_data_with_community, record
-):
-    """Fixture to create importer task, with community required, NO files and existing record.
-
-    This will generate a edit to the current version, and increment the revision.
-    PIDS need to stay the same.
-    """
-    valid_importer_task_data_with_community["existing_record_id"] = str(record.id)
-    valid_importer_task_data_with_community["validated_record_files"] = None
-    valid_importer_task_data_with_community["transformed_data"]["files"] = {
-        "enabled": False
-    }
-    """Fixture to create importer task, with community required."""
-    r = importer_records_service.create(
-        user_admin.identity,
-        data=valid_importer_task_data_with_community,
-        task_id=task.id,
-    )
-
-    return r
+    return validated_ir_data

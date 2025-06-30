@@ -15,28 +15,14 @@ from flask_resources import (
     ResponseHandler,
     create_error_handler,
 )
-from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_i18n import gettext as _
+from invenio_records_resources.resources.errors import ErrorHandlersMixin
+from invenio_records_resources.resources.files import FileResourceConfig
 from invenio_records_resources.resources.records import RecordResourceConfig
 from invenio_records_resources.resources.records.headers import etag_headers
 from invenio_records_resources.services.base.config import ConfiguratorMixin, FromConfig
 
-importer_task_error_handlers = RecordResourceConfig.error_handlers.copy()
-importer_task_error_handlers.update(
-    {
-        FileNotFoundError: create_error_handler(
-            HTTPJSONException(
-                code=404,
-                description="No file exists for this importer task.",
-            )
-        ),
-        PIDDoesNotExistError: create_error_handler(
-            HTTPJSONException(
-                code=404,
-                description="The persistent identifier does not exist.",
-            )
-        ),
-    }
-)
+from invenio_bulk_importer.errors import ImporterTaskNoReadyError
 
 
 class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
@@ -57,9 +43,15 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
         "item-status": "/<pid_value>/status",
     }
 
-    error_handlers = FromConfig(
-        "IMPORTER_TASK_ERROR_HANDLERS", default=importer_task_error_handlers
-    )
+    error_handlers = {
+        **ErrorHandlersMixin.error_handlers,
+        ImporterTaskNoReadyError: create_error_handler(
+            lambda e: HTTPJSONException(
+                code=405,
+                description=_("Importer Task in wrong status to proceed."),
+            )
+        ),
+    }
 
     response_handlers = {
         "application/json": ResponseHandler(JSONSerializer(), headers=etag_headers),
@@ -71,6 +63,19 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     request_view_args = {
         **RecordResourceConfig.request_view_args,
         "record_type": ma.fields.Str(),
+    }
+
+
+class ImporterTaskFilesResourceConfig(FileResourceConfig, ConfiguratorMixin):
+    """Importer Task record files resource config."""
+
+    allow_upload = True
+    allow_archive_download = FromConfig("RDM_ARCHIVE_DOWNLOAD_ENABLED", True)
+    blueprint_name = "files"
+    url_prefix = "/importer-tasks/<pid_value>"
+
+    error_handlers = {
+        **ErrorHandlersMixin.error_handlers,
     }
 
 

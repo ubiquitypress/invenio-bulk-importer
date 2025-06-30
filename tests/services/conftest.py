@@ -10,6 +10,10 @@
 
 import pytest
 
+from invenio_bulk_importer.proxies import (
+    current_importer_records_service as importer_records_service,
+)
+
 
 @pytest.fixture()
 def minimal_importer_record():
@@ -47,3 +51,19 @@ def task_starter(UserFixture, app, db):
     )
     u.create(app, db)
     return u
+
+
+@pytest.fixture
+def validated_ir_instance_no_files_one_community(
+    task, user_admin, validated_ir_data_with_community
+):
+    """Fixture to create importer task, with no files or community required."""
+    validated_ir_data_with_community["validated_record_files"] = None
+    validated_ir_data_with_community["transformed_data"]["files"] = {"enabled": False}
+    r = importer_records_service.create(
+        user_admin.identity,
+        data=validated_ir_data_with_community,
+        task_id=task.id,
+    )
+
+    return r

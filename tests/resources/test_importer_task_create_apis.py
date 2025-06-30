@@ -116,7 +116,14 @@ def test_importer_task_with_create(
         new_record_id = response.json["generated_record_id"]
     assert new_record_id is not None, "No new record ID found"
 
-    # Get the new record.
+    # Fail to trigger Importer Task loading as not all record in validated state.
+    with admin_client.post(
+        f"/importer-tasks/{task_id}/load",
+        headers=headers,
+    ) as response:
+        assert response.status_code == 405
+
+    # Create a single new record from the record that is validated.
     with admin_client.get(
         f"/records/{new_record_id}",
         headers={
@@ -132,8 +139,6 @@ def test_importer_task_with_create(
             response.json["metadata"]["title"]
             == "Micraster ernsti Schlüter 2024, sp. nov."
         )
-        print(response.json["parent"]["pids"])
-        print(response.json["pids"])
         assert response.json["versions"]["index"] == 1
         assert response.json["status"] == "published"
         assert response.json["files"]["entries"]["xml.xsd"]["size"] == 1663
