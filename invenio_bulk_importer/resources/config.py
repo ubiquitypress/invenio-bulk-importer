@@ -94,6 +94,6 @@ class ImporterRecordResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     response_handlers = {
         "application/json": ResponseHandler(JSONSerializer(), headers=etag_headers),
         "application/vnd.inveniordm.v1+json": ResponseHandler(
-            BaseObjectSchema(), headers=etag_headers
+            JSONSerializer(), headers=etag_headers
         ),
     }

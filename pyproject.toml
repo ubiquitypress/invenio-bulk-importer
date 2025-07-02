@@ -36,12 +36,13 @@ requires-python = ">=3.10"
 dependencies = [
   "boto3>=1.26.0,<2.0",
   "google-cloud-storage>=2.8.0,<3.2",
+  "invenio-administration>=4.0.0,<5.0.0",
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",
-  "invenio-rdm-records>=17.0.1,<18.0.0",
+  "invenio-rdm-records>=19.0.0,<20.0.0",
   "invenio-search[opensearch2]>=3.0.0,<4.0.0",
-  "pydantic>=2.11.4,<3.0.0",
   "marshmallow>=3.26.1",
+  "pydantic>=2.11.4,<3.0.0",
 ]
 urls = {Repository = "https://github.com/ubiquitypress/invenio-bulk-importer"}
 
@@ -89,6 +90,13 @@ messages = "invenio_bulk_importer"
 
 [project.entry-points."invenio_base.api_finalize_app"]
 invenio_bulk_importer = "invenio_bulk_importer.ext:api_finalize_app"
+
+[project.entry-points."invenio_administration.views"]
+invenio_bulk_importer_tasks_list = "invenio_bulk_importer.administration.importer_tasks:ImporterTaskListView"
+invenio_bulk_importer_tasks_detail = "invenio_bulk_importer.administration.importer_tasks:ImporterTaskDetailView"
+
+[project.entry-points."invenio_assets.webpack"]
+invenio_bulk_importer = "invenio_bulk_importer.webpack:bulk_importer"
 
 # Tools in alphabetical order
 [tool.babel.compile_catalog]

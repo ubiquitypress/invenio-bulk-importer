@@ -1,0 +1,18 @@
+{#
+  Copyright (C) 2025 Ubiquity Press.
+
+  Invenio App RDM is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+{% extends "invenio_administration/search.html" %}
+
+{% block css %}
+  {{ super() }}
+  {{ webpack['invenio-bulk-importer-tasks-admin-search.css'] }}
+{% endblock %}
+
+{% block javascript %}
+  {{ super() }}
+  {{ webpack['invenio-bulk-importer-tasks-admin-search.js'] }}
+{% endblock %}
+
