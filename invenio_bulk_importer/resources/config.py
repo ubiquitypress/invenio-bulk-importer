@@ -54,10 +54,10 @@ class ImporterTaskResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     }
 
     response_handlers = {
-        "application/json": ResponseHandler(JSONSerializer(), headers=etag_headers),
-        "application/vnd.inveniordm.v1+json": ResponseHandler(
-            BaseObjectSchema(), headers=etag_headers
-        ),
+        "application/vnd.inveniordm.v1+json": RecordResourceConfig.response_handlers[
+            "application/json"
+        ],
+        **RecordResourceConfig.response_handlers,
     }
 
     request_view_args = {
