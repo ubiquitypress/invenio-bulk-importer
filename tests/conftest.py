@@ -24,9 +24,9 @@ from invenio_cache.proxies import current_cache
 from invenio_communities.communities.records.api import Community
 from invenio_communities.proxies import current_communities
 from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.proxies import current_rdm_records_service as record_service
-from invenio_rdm_records.records.api import RDMDraft
-from invenio_rdm_records.records.api import RDMRecord as InvenioRDMRecord
+from invenio_rdm_records.records.api import RDMDraft, RDMRecord as InvenioRDMRecord
 from invenio_rdm_records.resources.serializers import DataCite43JSONSerializer
 from invenio_rdm_records.services.pids import providers
 from invenio_records_resources.proxies import current_service_registry
@@ -42,12 +42,13 @@ from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
+from werkzeug.local import LocalProxy
 
 from invenio_bulk_importer.proxies import (
     current_importer_tasks_service as importer_tasks_service,
 )
 from invenio_bulk_importer.record_types.rdm import RDMRecord
-from invenio_bulk_importer.records.api import ImporterTask
+from invenio_bulk_importer.records.api import ImporterTask, ImporterRecord
 from invenio_bulk_importer.serializers.records.csv import CSVRDMRecordSerializer
 from invenio_bulk_importer.serializers.records.examples.custom_fields.imprint import (
     IMPRINT_CUSTOM_FIELDS,
@@ -80,6 +81,18 @@ def create_app(instance_path, entry_points):
 
 
 @pytest.fixture(scope="module")
+def extra_entry_points():
+    """Extra entrypoints."""
+    return {
+        "invenio_base.blueprints": [
+            "invenio_app_rdm_records = tests.mock_module:create_invenio_app_rdm_records_blueprint",  # noqa
+            "invenio_app_rdm_requests = tests.mock_module:create_invenio_app_rdm_requests_blueprint",  # noqa
+            "invenio_app_rdm_communities = tests.mock_module:create_invenio_app_rdm_communities_blueprint",  # noqa
+        ],
+    }
+
+
+@pytest.fixture(scope="module")
 def app_config(app_config, mock_datacite_client):
     """Overwrite pytest invenio app_config fixture."""
     app_config["RECORDS_REFRESOLVER_CLS"] = (
@@ -108,6 +121,11 @@ def app_config(app_config, mock_datacite_client):
             "serializers": {"csv": CSVRDMRecordSerializer},
         }
     }
+    records_index = LocalProxy(
+        lambda: current_rdm_records_service.record_cls.index._name
+    )
+    app_config["INDEXER_DEFAULT_INDEX"] = records_index
+
     app_config["RDM_NAMESPACES"] = {"imprint": None}
     app_config["RDM_CUSTOM_FIELDS"] = IMPRINT_CUSTOM_FIELDS
     app_config["RDM_COMMUNITY_REQUIRED_TO_PUBLISH"] = True
@@ -1361,3 +1379,45 @@ def validated_ir_data_with_community(validated_ir_data, community):
         "ids": [community.id],
     }
     return validated_ir_data
+
+
+def _search_create_indexes(current_search, current_search_client):
+    """Create all registered search indexes."""
+    to_create = [
+        InvenioRDMRecord.index._name,
+        RDMDraft.index._name,
+        Community.index._name,
+        ImporterTask.index._name,
+        ImporterRecord.index._name,
+    ]
+    # list to trigger iter
+    list(current_search.create(ignore_existing=True, index_list=to_create))
+    current_search_client.indices.refresh()
+
+
+def _search_delete_indexes(current_search):
+    """Delete all registered search indexes."""
+    to_delete = [
+        InvenioRDMRecord.index._name,
+        RDMDraft.index._name,
+        Community.index._name,
+        ImporterTask.index._name,
+        ImporterRecord.index._name,
+    ]
+    list(current_search.delete(index_list=to_delete))
+
+
+# overwrite pytest_invenio.fixture to only delete record indices
+# keeping vocabularies.
+@pytest.fixture()
+def search_clear(search):
+    """Clear search indices after test finishes (function scope).
+
+    This fixture rollback any changes performed to the indexes during a test,
+    in order to leave search in a clean state for the next test.
+    """
+    from invenio_search import current_search, current_search_client
+
+    yield search
+    _search_delete_indexes(current_search)
+    _search_create_indexes(current_search, current_search_client)
