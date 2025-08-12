@@ -38,7 +38,7 @@ from .schemas import ImporterRecordSchema, ImporterTaskSchema
 class ImporterTaskSearchOptions(SearchOptionsBase, SearchOptionsMixin):
     """Search options."""
 
-    facets = {"status": facets.task_status}
+    facets = {"status": facets.task_status, "record_type": facets.record_type}
     params_interpreters_cls = [
         QueryStrParam,
         PaginationParam,

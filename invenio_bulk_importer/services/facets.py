@@ -27,6 +27,11 @@ task_status = TermsFacet(
     },
 )
 
+record_type = TermsFacet(
+    field="record_type",
+    label=_("Record type"),
+)
+
 record_status = TermsFacet(
     field="status",
     label=_("Status"),
