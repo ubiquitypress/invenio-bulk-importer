@@ -6,17 +6,45 @@
 # it under the terms of the MIT License; see LICENSE file for more details.
 #
 
-"""Employee Profile service configuration."""
+"""Importer service configuration."""
+
 from invenio_records_resources.services import FileLink, FileServiceConfig
-from invenio_records_resources.services.base.config import ConfiguratorMixin
+from invenio_records_resources.services.base.config import (
+    ConfiguratorMixin,
+    FromConfigSearchOptions,
+    SearchOptionsMixin,
+)
 from invenio_records_resources.services.records import RecordServiceConfig
 from invenio_records_resources.services.records.components import DataComponent
+from invenio_records_resources.services.records.config import (
+    SearchOptions as SearchOptionsBase,
+)
+from invenio_records_resources.services.records.params import (
+    FacetsParam,
+    PaginationParam,
+    QueryStrParam,
+    SortParam,
+)
+
+from invenio_bulk_importer.services import facets
 
 from ..records.api import ImporterRecord, ImporterTask
 from .components import ImporterRecordServiceComponent, ImporterTaskServiceComponent
 from .links import ILink
 from .permissions import ImporterRecordPermissionPolicy, ImporterTaskPermissionPolicy
 from .schemas import ImporterRecordSchema, ImporterTaskSchema
+
+
+class ImporterTaskSearchOptions(SearchOptionsBase, SearchOptionsMixin):
+    """Search options."""
+
+    facets = {"status": facets.task_status}
+    params_interpreters_cls = [
+        QueryStrParam,
+        PaginationParam,
+        SortParam,
+        FacetsParam,
+    ]
 
 
 class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
@@ -26,6 +54,14 @@ class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
 
     # Record specific configuration
     record_cls = ImporterTask
+
+    # Search configuration
+    search = FromConfigSearchOptions(
+        "BULK_IMPORTER_TASKS_SEARCH",
+        "BULK_IMPORTER_TASKS_SORT_OPTIONS",
+        "BULK_IMPORTER_TASKS_FACETS",
+        search_option_cls=ImporterTaskSearchOptions,
+    )
 
     # Service schema
     schema = ImporterTaskSchema
@@ -60,6 +96,16 @@ class ImporterTaskFileServiceConfig(FileServiceConfig, ConfiguratorMixin):
         "self": FileLink("{+api}/importer-tasks/{id}/{+key}"),
     }
 
+class ImporterRecordSearchOptions(SearchOptionsBase, SearchOptionsMixin):
+    """Search options."""
+
+    facets = {"status": facets.record_status}
+    params_interpreters_cls = [
+        QueryStrParam,
+        PaginationParam,
+        SortParam,
+        FacetsParam,
+    ]
 
 class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     """Importer Task Service configuration Class."""
@@ -69,6 +115,13 @@ class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     # Record specific configuration
     record_cls = ImporterRecord
 
+    # Search configuration
+    search = FromConfigSearchOptions(
+        "BULK_IMPORTER_RECORDS_SEARCH",
+        "BULK_IMPORTER_RECORDS_SORT_OPTIONS",
+        "BULK_IMPORTER_RECORDS_FACETS",
+        search_option_cls=ImporterRecordSearchOptions,
+    )
     # Service schema
     schema = ImporterRecordSchema
 
