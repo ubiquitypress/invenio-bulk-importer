@@ -27,8 +27,8 @@ class ImporterTaskListView(AdminResourceListView):
     resource_config = "tasks_resource"
     search_request_headers = {"Accept": "application/vnd.inveniordm.v1+json"}
     title = "Bulk importer"
-    menu_label = "Importer Tasks"
-    category = "Bulk Importer"
+    menu_label = "Bulk importer"
+    category = "System"
     pid_path = "id"
     icon = "copy"
     template = "invenio_bulk_importer/administration/importer_tasks_search.html"
