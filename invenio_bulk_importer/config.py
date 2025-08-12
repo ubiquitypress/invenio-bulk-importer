@@ -10,6 +10,9 @@
 
 from invenio_i18n import lazy_gettext as _
 
+from invenio_bulk_importer.record_types.rdm import RDMRecord
+from invenio_bulk_importer.serializers.records.csv import CSVRDMRecordSerializer
+
 # TODO: This is an example file. Remove it if your package does not use any
 # extra configuration variables.
 
@@ -22,7 +25,16 @@ BULK_IMPORTER_BASE_TEMPLATE = "invenio_bulk_importer/base.html"
 BULK_IMPORTER_CUSTOM_FIELDS = {}
 """Custom fields for the importer."""
 
-BULK_IMPORTER_RECORD_TYPES = {}
+BULK_IMPORTER_RECORD_TYPES = {
+    "record": {
+        "class": RDMRecord,
+        "options": {
+            "doi_minting": False,
+            "publish": True,
+        },
+        "serializers": {"csv": CSVRDMRecordSerializer},
+    }
+}
 """List of options and serializers to be used by the importer."""
 
 
