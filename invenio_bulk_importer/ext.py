@@ -116,15 +116,12 @@ def init(app):
     )
 
     # Register indexers if you have them
-    if hasattr(app.extensions, "invenio-indexer"):
-        iregistry = app.extensions["invenio-indexer"].registry
-        if hasattr(ext.tasks_service, "indexer"):
-            iregistry.register(
-                ext.tasks_service.indexer,
-                indexer_id=ext.tasks_service.config.service_id,
-            )
-        if hasattr(ext.records_service, "indexer"):
-            iregistry.register(
-                ext.records_service.indexer,
-                indexer_id=ext.records_service.config.service_id,
-            )
+    iregistry = app.extensions["invenio-indexer"].registry
+    iregistry.register(
+        ext.tasks_service.indexer,
+        indexer_id=ext.tasks_service.config.service_id,
+    )
+    iregistry.register(
+        ext.records_service.indexer,
+        indexer_id=ext.records_service.config.service_id,
+    )
