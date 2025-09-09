@@ -7,4 +7,3 @@
 # details.
 
 """Bulk importer administration integration."""
-
