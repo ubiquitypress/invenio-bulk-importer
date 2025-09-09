@@ -96,6 +96,7 @@ class ImporterTaskFileServiceConfig(FileServiceConfig, ConfiguratorMixin):
         "self": FileLink("{+api}/importer-tasks/{id}/{+key}"),
     }
 
+
 class ImporterRecordSearchOptions(SearchOptionsBase, SearchOptionsMixin):
     """Search options."""
 
@@ -106,6 +107,7 @@ class ImporterRecordSearchOptions(SearchOptionsBase, SearchOptionsMixin):
         SortParam,
         FacetsParam,
     ]
+
 
 class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     """Importer Task Service configuration Class."""

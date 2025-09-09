@@ -852,9 +852,8 @@ def users(UserFixture, app, database, users_data):
         )
         u.create(app, database)
         users[obj["username"]] = u
-    current_users_service.indexer.process_bulk_queue()
-    current_users_service.record_cls.index.refresh()
     database.session.commit()
+    current_users_service.record_cls.index.refresh()
     return users
 
 

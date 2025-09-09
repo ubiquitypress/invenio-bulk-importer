@@ -38,7 +38,9 @@ record_status = TermsFacet(
     value_labels={
         ImporterRecordState.CREATED.value: _("Created"),
         ImporterRecordState.VALIDATING.value: _("Validating"),
-        ImporterRecordState.SERIALIZER_VALIDATION_FAILED.value: _("Serializer validation failed"),
+        ImporterRecordState.SERIALIZER_VALIDATION_FAILED.value: _(
+            "Serializer validation failed"
+        ),
         ImporterRecordState.VALIDATION_FAILED.value: _("Validation failed"),
         ImporterRecordState.VALIDATED.value: _("Validated"),
         ImporterRecordState.IMPORT_FAILED.value: _("Import failed"),
