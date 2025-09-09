@@ -8,6 +8,8 @@
 
 """Serializer utils module."""
 
+from typing import Any
+
 
 def process_grouped_fields_via_column_title(
     original: dict, group_prefix: str, main_key: str
@@ -106,3 +108,22 @@ def generate_error_messages(errors: list) -> list[dict]:
             )
         )
     return error_messages
+
+
+def strip_string_values(obj: dict[str, Any]) -> dict[str, Any]:
+    """Stript white spaces from string values inside a dictionary.
+
+    :param obj: The dictionary to strip string from.
+    :return: A copy of the dictionary witht he stripped values.
+    """
+    new_dict = {}
+    for k, v in obj.items():
+        if isinstance(v, str):
+            new_dict[k] = v.strip()
+        elif isinstance(v, dict):
+            new_dict[k] = strip_string_values(v)
+        elif isinstance(v, list):
+            new_dict[k] = [strip_string_values(i) for i in v]
+        else:
+            new_dict[k] = v
+    return new_dict

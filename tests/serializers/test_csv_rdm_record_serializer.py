@@ -191,25 +191,25 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         {
             "scheme": "arxiv",
             "identifier": "10.5281/zenodo.10561540",
-            "resource_type": {"id": "image-figure "},
+            "resource_type": {"id": "image-figure"},
             "relation_type": {"id": "cites"},
         },
         {
             "scheme": "doi",
             "identifier": "10.5281/zenodo.10561542",
-            "resource_type": {"id": "image-figure "},
+            "resource_type": {"id": "image-figure"},
             "relation_type": {"id": "cites"},
         },
         {
             "scheme": "doi",
             "identifier": "10.5281/zenodo.10561544",
-            "resource_type": {"id": "image-figure "},
+            "resource_type": {"id": "image-figure"},
             "relation_type": {"id": "cites"},
         },
         {
             "scheme": "doi",
             "identifier": "10.5281/zenodo.10561546",
-            "resource_type": {"id": "image-figure "},
+            "resource_type": {"id": "image-figure"},
             "relation_type": {"id": "cites"},
         },
         {

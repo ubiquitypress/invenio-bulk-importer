@@ -29,6 +29,7 @@ from invenio_bulk_importer.serializers.records.utils import (
     generate_error_messages,
     process_grouped_fields,
     process_grouped_fields_via_column_title,
+    strip_string_values,
 )
 
 
@@ -155,7 +156,7 @@ class MetadataSchema(BaseModel):
         """Validate resource type."""
         if not value:
             raise ValueError("Missing 'resource_type.id'")
-        return {"id": value}
+        return {"id": value.strip()}
 
     @field_validator("languages", mode="before")
     def validate_languages(cls, value):
@@ -232,20 +233,18 @@ class MetadataSchema(BaseModel):
         temp_out = process_grouped_fields(values, "related_identifiers")
         output = []
         for identifier in temp_out:
-            new_identifier = {
-                "identifier": identifier.get("identifier"),
-                "scheme": identifier.get("scheme"),
-                "relation_type": {
-                    "id": identifier.get("relation_type.id"),
-                },
-                "resource_type": {
-                    "id": identifier.get("resource_type.id"),
-                },
-            }
-            if identifier.get("resource_type.id"):
-                new_identifier["relation_type"] = {
-                    "id": identifier.get("relation_type.id"),
+            new_identifier = strip_string_values(
+                {
+                    "identifier": identifier.get("identifier"),
+                    "scheme": identifier.get("scheme"),
+                    "relation_type": {
+                        "id": identifier.get("relation_type.id"),
+                    },
+                    "resource_type": {
+                        "id": identifier.get("resource_type.id"),
+                    },
                 }
+            )
             output.append(new_identifier)
         values["related_identifiers"] = output
         return values
