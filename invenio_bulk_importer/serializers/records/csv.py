@@ -8,13 +8,14 @@
 
 """CSV serializer for RDM records."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from flask import current_app
 from invenio_base.utils import obj_or_import_string
 from invenio_records_resources.proxies import current_service_registry
 from invenio_records_resources.tasks import system_identity
 from pydantic import (
+    AliasChoices,
     BaseModel,
     BeforeValidator,
     Field,
@@ -371,10 +372,19 @@ class MetadataSchema(BaseModel):
 class CSVRecordSchema(BaseModel):
     """CSV RDM Record Pydantic schema."""
 
-    id: str = Field(default=None)
+    id: Optional[str] = Field(default=None)
     pids: dict = Field(default_factory=dict, alias="doi")
-    default_community: str = Field(default=None)
-    communities: NewlineList
+    default_community: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "default_community_slug", "default_collection", "default_collection_slug"
+        ),
+    )
+    communities: NewlineList = Field(
+        validation_alias=AliasChoices(
+            "communities", "community_slugs", "collections", "collection_slugs"
+        )
+    )
     files: NewlineList = Field(alias="filenames")
     access: dict[str, str | dict[str, str | None]]
     custom_fields: dict[str, str | dict | list] = Field(default_factory=dict)
