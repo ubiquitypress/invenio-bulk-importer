@@ -8,9 +8,9 @@
 
 """General fixtures."""
 
-import os
 from collections import namedtuple
 from io import BytesIO
+from pathlib import Path
 
 import idutils
 import pytest
@@ -24,10 +24,13 @@ from invenio_cache.proxies import current_cache
 from invenio_communities.communities.records.api import Community
 from invenio_communities.proxies import current_communities
 from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_rdm_records import config
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.proxies import current_rdm_records_service as record_service
-from invenio_rdm_records.records.api import RDMDraft, RDMRecord as InvenioRDMRecord
+from invenio_rdm_records.records.api import RDMDraft
+from invenio_rdm_records.records.api import RDMRecord as InvenioRDMRecord
 from invenio_rdm_records.resources.serializers import DataCite43JSONSerializer
+from invenio_rdm_records.services.permissions import RDMRequestsPermissionPolicy
 from invenio_rdm_records.services.pids import providers
 from invenio_records_resources.proxies import current_service_registry
 from invenio_requests.proxies import current_requests_service
@@ -48,7 +51,7 @@ from invenio_bulk_importer.proxies import (
     current_importer_tasks_service as importer_tasks_service,
 )
 from invenio_bulk_importer.record_types.rdm import RDMRecord
-from invenio_bulk_importer.records.api import ImporterTask, ImporterRecord
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 from invenio_bulk_importer.serializers.records.csv import CSVRDMRecordSerializer
 from invenio_bulk_importer.serializers.records.examples.custom_fields.imprint import (
     IMPRINT_CUSTOM_FIELDS,
@@ -95,6 +98,19 @@ def extra_entry_points():
 @pytest.fixture(scope="module")
 def app_config(app_config, mock_datacite_client):
     """Overwrite pytest invenio app_config fixture."""
+    supported_configurations = [
+        "FILES_REST_PERMISSION_FACTORY",
+        "PIDSTORE_RECID_FIELD",
+        "RECORDS_PERMISSIONS_RECORD_POLICY",
+        "RECORDS_REST_ENDPOINTS",
+        "REQUESTS_PERMISSION_POLICY",
+    ]
+
+    for config_key in supported_configurations:
+        app_config[config_key] = getattr(config, config_key, None)
+
+    app_config["REQUESTS_PERMISSION_POLICY"] = RDMRequestsPermissionPolicy
+
     app_config["RECORDS_REFRESOLVER_CLS"] = (
         "invenio_records.resolver.InvenioRefResolver"
     )
@@ -1048,13 +1064,11 @@ def task(running_app, user_admin, minimal_importer_task, app_config):
     """Create record using the minimal record fixture data."""
     r = importer_tasks_service.create(user_admin.identity, minimal_importer_task)
 
-    # Add Metadata file to the task
-    local_dir = os.path.dirname(__file__)
     # Path to the test file (assuming it's in the same directory)
-    file_path = os.path.join(f"{local_dir}/data", "rdm_records.csv")
+    file_path = Path(__file__).parent / "data" / "rdm_records.csv"
 
     # Read the file and create a BytesIO stream
-    with open(file_path, "rb") as f:
+    with file_path.open("rb") as f:
         stream = BytesIO(f.read())
         importer_tasks_service.update_metadata_file(
             user_admin.identity,
@@ -1356,9 +1370,9 @@ def validated_ir_data():
             },
             {
                 "key": "13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
-                "full_path": "gs://rua-uplo/files/books/1/13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
+                "full_path": "gs://cloud-samples-data/storage/static-hosting/index.html",
                 "origin": "gs",
-                "size": 4800201,
+                "size": 38,
             },
             {
                 "key": "xml.xsd",

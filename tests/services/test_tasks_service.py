@@ -1,3 +1,4 @@
+import time
 from io import BytesIO
 
 import pytest
@@ -8,7 +9,7 @@ from invenio_bulk_importer.proxies import (
 from invenio_bulk_importer.proxies import (
     current_importer_tasks_service as tasks_service,
 )
-from invenio_bulk_importer.records.api import ImporterTask
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 from invenio_bulk_importer.records.models import ImporterRecordModel, ImporterTaskModel
 
 
@@ -67,16 +68,15 @@ def test_starting_validation(app, db, user_admin, task, community, search_clear)
     task_result = tasks_service.start_validation(user_admin.identity, task.id)
     assert task_result.data["status"] == "created"
 
-    # Wait for 3 seconds
-    import time
-
-    time.sleep(3)
     record_model_instances = (
         db.session.query(ImporterRecordModel)
         .filter(ImporterRecordModel.task_id == task.id)
         .all()
     )
     assert len(record_model_instances) == 3
+
+    time.sleep(3)
+    ImporterRecord.index.refresh()
 
     # Assertions - there will be 3 records, one valid, the others fail at serializer or at record type validation.
     all_records = records_service.search(user_admin.identity)
