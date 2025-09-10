@@ -6,7 +6,7 @@ def test_files_verification(rdm_record_instance):
     files = [
         "README.rst",
         "s3://service-rua/up/core/fixtures/key_help.json",
-        "gs://rua-uplo/files/books/1/13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
+        "gs://cloud-samples-data/storage/static-hosting/index.html",
         "https://www.w3.org/2001/03/xml.xsd",
     ]
 
@@ -28,10 +28,10 @@ def test_files_verification(rdm_record_instance):
             "size": 5446,
         },
         {
-            "key": "13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
-            "full_path": "gs://rua-uplo/files/books/1/13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
+            "key": "index.html",
+            "full_path": "gs://cloud-samples-data/storage/static-hosting/index.html",
             "origin": "gs",
-            "size": 4800201,
+            "size": 38,
         },
         {
             "key": "xml.xsd",
@@ -76,7 +76,7 @@ def test_files_verification_s3_failures(rdm_record_instance):
 
 def test_files_verification_gs_failures(rdm_record_instance):
     """Test that files are verified correctly."""
-    files = ["gs://rua-uplo/files/books/1/99999999.pdf"]
+    files = ["gs://cloud-samples-data/wrong.pdf"]
 
     rdm_record_instance._verify_files_accessible(files)
     # Verify files accessibility
@@ -85,7 +85,7 @@ def test_files_verification_gs_failures(rdm_record_instance):
         dict(
             type="file_not_accessible",
             loc="files",
-            msg="Error accessing GCS file 'gs://rua-uplo/files/books/1/99999999.pdf' does not exist.",
+            msg="Error accessing GCS file 'gs://cloud-samples-data/wrong.pdf' does not exist.",
         )
     ]
 

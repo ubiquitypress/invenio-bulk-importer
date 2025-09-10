@@ -178,7 +178,7 @@ def serialized_record():
         "files": [
             "README.rst",
             "s3://service-rua/up/core/fixtures/key_help.json",
-            "gs://rua-uplo/files/books/1/13c3fea3-ac2f-4c9c-a71f-b59956f3ac10.pdf",
+            "gs://cloud-samples-data/storage/static-hosting/index.html",
             "https://www.w3.org/2001/03/xml.xsd",
         ],
         "access": {

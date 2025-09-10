@@ -63,8 +63,8 @@ def test_importer_task_with_create(
             data=BytesIO(f.read()),
         ) as response:
             assert response.status_code == 200
-            response.json["size"] == 44663
-            response.json["mimetype"] == "text/csv"
+            assert response.json["size"] == 44660
+            assert response.json["mimetype"] == "text/csv"
 
     # Start Validation of csv file
     with admin_client.post(
@@ -90,7 +90,7 @@ def test_importer_task_with_create(
     # Get Importer Records
     time.sleep(6)  # Wait for the task to process
     with admin_client.get(
-        f"/importer-records",
+        "/importer-records",
         headers=headers,
     ) as response:
         assert response.status_code == 200
@@ -123,7 +123,7 @@ def test_importer_task_with_create(
     ) as response:
         assert response.status_code == 405
 
-    # Create a single new record from the record that is validated.
+    # Check the new records.
     with admin_client.get(
         f"/records/{new_record_id}",
         headers={
@@ -133,8 +133,8 @@ def test_importer_task_with_create(
     ) as response:
         assert response.status_code == 200
         assert response.json["id"] == new_record_id
-        assert response.json["is_draft"] == False
-        assert response.json["is_published"] == True
+        assert response.json["is_draft"] is False
+        assert response.json["is_published"] is True
         assert (
             response.json["metadata"]["title"]
             == "Micraster ernsti Schlüter 2024, sp. nov."
