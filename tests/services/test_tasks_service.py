@@ -1,4 +1,3 @@
-import time
 from io import BytesIO
 
 import pytest
@@ -75,7 +74,7 @@ def test_starting_validation(app, db, user_admin, task, community, search_clear)
     )
     assert len(record_model_instances) == 3
 
-    time.sleep(3)
+    ImporterTask.index.refresh()
     ImporterRecord.index.refresh()
 
     # Assertions - there will be 3 records, one valid, the others fail at serializer or at record type validation.

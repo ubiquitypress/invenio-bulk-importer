@@ -1,6 +1,7 @@
 import os
-import time
 from io import BytesIO
+
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 
 
 def test_importer_task_with_create(
@@ -87,8 +88,10 @@ def test_importer_task_with_create(
             "serializer validation failed": 1,
         }
 
+    ImporterTask.index.refresh()
+    ImporterRecord.index.refresh()
+
     # Get Importer Records
-    time.sleep(6)  # Wait for the task to process
     with admin_client.get(
         "/importer-records",
         headers=headers,
