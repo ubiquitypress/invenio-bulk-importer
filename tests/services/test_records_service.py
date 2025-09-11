@@ -1,4 +1,3 @@
-import time
 import uuid
 
 from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
@@ -7,7 +6,7 @@ from invenio_rdm_records.records import RDMDraft, RDMRecord
 from invenio_rdm_records.records.models import RDMDraftMetadata, RDMRecordMetadata
 
 from invenio_bulk_importer.proxies import current_importer_records_service
-from invenio_bulk_importer.records.api import ImporterRecord
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 from invenio_bulk_importer.records.models import ImporterRecordModel
 
 
@@ -56,10 +55,9 @@ def test_run_transformed_record(
     record_item = current_importer_records_service.start_run(
         user_admin.identity, id_=validated_ir_instance_no_files_one_community.id
     )
-    # Wait for 3 seconds
-    time.sleep(3)
     RDMDraft.index.refresh()
     RDMRecord.index.refresh()
+    ImporterTask.index.refresh()
     ImporterRecord.index.refresh()
     # try to search for the profile
     all_importer_records = current_importer_records_service.search(user_admin.identity)

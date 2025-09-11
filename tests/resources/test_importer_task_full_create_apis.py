@@ -1,12 +1,15 @@
 import os
-import time
 from io import BytesIO
+
+from invenio_rdm_records.records import RDMRecord
+
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 
 
 def _get_importer_task_status(task_id, admin_client, headers) -> tuple[str, dict]:
     """Helper function to get the status of an importer task."""
     # Update task status
-    time.sleep(3)
+    ImporterTask.index.refresh()
     with admin_client.put(
         f"/importer-tasks/{task_id}/status",
         headers=headers,
@@ -135,10 +138,12 @@ def test_importer_task_with_create(
     ) as response:
         assert response.status_code == 200
 
+    ImporterTask.index.refresh()
+    ImporterRecord.index.refresh()
+
     # Get Importer Records
-    time.sleep(6)  # Wait for the task to process
     with admin_client.get(
-        f"/importer-records",
+        "/importer-records",
         headers=headers,
     ) as response:
         assert response.status_code == 200
@@ -161,7 +166,7 @@ def test_importer_task_with_create(
     ) as response:
         assert response.status_code == 200
 
-    time.sleep(6)  # Wait for the task to process
+    RDMRecord.index.refresh()
 
     # Check task status is correct after loading records
     status, records_status = _get_importer_task_status(task_id, admin_client, headers)

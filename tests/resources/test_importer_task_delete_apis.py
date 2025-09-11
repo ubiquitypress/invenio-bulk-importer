@@ -1,7 +1,7 @@
-import time
-
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMRecord as InvenioRDMRecord
+
+from invenio_bulk_importer.records.api import ImporterRecord, ImporterTask
 
 
 def test_importer_task_with_file_update_new_version(
@@ -39,8 +39,10 @@ def test_importer_task_with_file_update_new_version(
             "total_records": 1,
         }
 
+    ImporterTask.index.refresh()
+    ImporterRecord.index.refresh()
+
     # Get Importer Records
-    time.sleep(6)  # Wait for the task to process
     with admin_client.get(
         "/importer-records",
         headers=headers,
