@@ -148,7 +148,8 @@ class ImporterTask(Record):
         """
         record_model_class = self.child_record_model_cls
         query = db.session.query(record_model_class.id).filter(
-            record_model_class.task_id == str(self.id)
+            record_model_class.task_id == str(self.id),
+            record_model_class.is_deleted.is_(False),
         )
         return [str(id) for (id,) in query.all()]
 

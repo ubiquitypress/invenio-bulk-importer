@@ -9,7 +9,6 @@
 
 import marshmallow as ma
 from flask_resources import (
-    BaseObjectSchema,
     HTTPJSONException,
     JSONSerializer,
     ResponseHandler,

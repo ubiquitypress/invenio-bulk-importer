@@ -7,6 +7,7 @@
 #
 
 """Bulk Importer Services."""
+
 import os
 from copy import deepcopy
 
@@ -32,6 +33,8 @@ from .tasks import (
 
 class BulkImporterMixin:
     """Mixin for bulk importer services."""
+
+    additional_keys = []
 
     def get_current_task_data(self, record):
         """Get the current data of the importer task."""
@@ -81,8 +84,23 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
     ):
         """Update the importer task metadata file."""
         self.require_permission(identity, "create")
+
+        record = self.record_cls.pid.resolve(id_)
+
+        self.run_components(
+            "metadata_file_update",
+            identity,
+            id_=id_,
+            record=record,
+            filename=filename,
+            stream=stream,
+            content_length=content_length,
+            uow=uow,
+        )
         extension = self._get_file_extension(filename)
-        return self._update_file(identity, id_, stream, "metadata", extension, uow=uow)
+        return self._update_file(
+            identity, record, stream, "metadata", extension, uow=uow
+        )
 
     def get_record_types(self, identity):
         """Get the available record types for usage in importer task."""
@@ -106,7 +124,9 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
     @unit_of_work()
     def delete_metadata_file(self, identity, id_, uow=None):
         """Delete the importer task metadata file."""
-        return self._delete_file(identity, id_, "metadata", uow=uow)
+        self.require_permission(identity, "delete")
+        record = self.record_cls.pid.resolve(id_)
+        return self._delete_file(identity, record, "metadata", uow=uow)
 
     @unit_of_work()
     def start_validation(self, identity, id_, uow=None):
@@ -249,9 +269,10 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
         )
 
     @unit_of_work()
-    def _update_file(self, identity, id_, stream, file_name, file_extension, uow=None):
+    def _update_file(
+        self, identity, record, stream, file_name, file_extension, uow=None
+    ):
         """Update a importer task's file."""
-        record = self.record_cls.pid.resolve(id_)
         self.require_permission(identity, "update", record=record)
 
         full_file_name = f"{file_name}{file_extension}" if file_extension else file_name
@@ -261,7 +282,7 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             and self._find_file_in_record(file_name, record)
         ):
             # Delete the old file of a different extension
-            self._delete_file(identity, id_, file_name, uow=uow)
+            self._delete_file(identity, record, file_name, uow=uow)
         record.files[full_file_name] = stream
         uow.register(RecordCommitOp(record))
 
@@ -270,12 +291,11 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             identity,
             record.files[full_file_name],
             record,
-            links_tpl=self.files.file_links_item_tpl(id_),
+            links_tpl=self.files.file_links_item_tpl(record.id),
         )
 
-    def _delete_file(self, identity, id_, file_name, uow=None):
+    def _delete_file(self, identity, record, file_name, uow=None):
         """Delete a importer task's file."""
-        record = self.record_cls.pid.resolve(id_)
         # update permission on community is required to be able to remove file.
         self.require_permission(identity, "update", record=record)
 
@@ -293,7 +313,7 @@ class ImporterTaskService(BulkImporterMixin, RecordService):
             identity,
             deleted_file,
             record,
-            links_tpl=self.files.file_links_item_tpl(id_),
+            links_tpl=self.files.file_links_item_tpl(record.id),
         )
 
 
