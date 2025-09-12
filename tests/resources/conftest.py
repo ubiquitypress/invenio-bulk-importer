@@ -84,7 +84,7 @@ def _create_task_with_csv_updates(
     # Add other files needed for records to be created
     content = BytesIO(b"test file content")
     result = importer_tasks_service._update_file(
-        identity, task.id, content, "article", ".txt"
+        identity, task._record, content, "article", ".txt"
     )
     assert result.to_dict()["key"] == "article.txt"
     ImporterTask.index.refresh()

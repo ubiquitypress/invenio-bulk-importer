@@ -1081,7 +1081,7 @@ def task(running_app, user_admin, minimal_importer_task, app_config):
     # Add other files needed for records to be created
     content = BytesIO(b"test file content")
     result = importer_tasks_service._update_file(
-        user_admin.identity, r.id, content, "article", ".txt"
+        user_admin.identity, r._record, content, "article", ".txt"
     )
     assert result.to_dict()["key"] == "article.txt"
     ImporterTask.index.refresh()
