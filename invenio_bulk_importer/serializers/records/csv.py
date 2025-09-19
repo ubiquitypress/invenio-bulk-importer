@@ -131,7 +131,9 @@ class MetadataSchema(BaseModel):
     )
     publication_date: str = Field(
         min_length=1,
-        validation_alias=AliasChoices("publication_date (EDTF Level 0 forrmat)"),
+        validation_alias=AliasChoices(
+            "publication_date", "publication_date (EDTF Level 0 forrmat)"
+        ),
     )
     description: str | None
     additional_descriptions: list[dict[str, str | dict[str, str]]] = Field(
