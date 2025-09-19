@@ -129,7 +129,10 @@ class MetadataSchema(BaseModel):
     additional_titles: list[dict[str, str | dict[str, str]]] = Field(
         default_factory=list
     )
-    publication_date: str = Field(min_length=1)
+    publication_date: str = Field(
+        min_length=1,
+        validation_alias=AliasChoices("publication_date (EDTF Level 0 forrmat)"),
+    )
     description: str | None
     additional_descriptions: list[dict[str, str | dict[str, str]]] = Field(
         default_factory=list
