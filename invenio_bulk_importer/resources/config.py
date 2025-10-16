@@ -70,7 +70,7 @@ class ImporterTaskFilesResourceConfig(FileResourceConfig, ConfiguratorMixin):
 
     allow_upload = True
     allow_archive_download = FromConfig("RDM_ARCHIVE_DOWNLOAD_ENABLED", True)
-    blueprint_name = "files"
+    blueprint_name = "importer-files"
     url_prefix = "/importer-tasks/<pid_value>"
 
     error_handlers = {

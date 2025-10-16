@@ -50,7 +50,7 @@ class ImporterTaskSearchOptions(SearchOptionsBase, SearchOptionsMixin):
 class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     """Importer Task Service configuration Class."""
 
-    service_id = "importertasks"
+    service_id = "importer-tasks"
 
     # Record specific configuration
     record_cls = ImporterTask
@@ -68,7 +68,7 @@ class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
 
     # Common configuration
     permission_policy_cls = ImporterTaskPermissionPolicy
-    indexer_queue_name = "importertasks"
+    indexer_queue_name = service_id
 
     components = [
         DataComponent,
@@ -86,7 +86,7 @@ class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
 class ImporterTaskFileServiceConfig(FileServiceConfig, ConfiguratorMixin):
     """Importer task file record service config."""
 
-    service_id = "importertaskfiles"
+    service_id = "importer-task-files"
 
     permission_policy_cls = ImporterTaskPermissionPolicy
 
@@ -112,7 +112,7 @@ class ImporterRecordSearchOptions(SearchOptionsBase, SearchOptionsMixin):
 class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     """Importer Task Service configuration Class."""
 
-    service_id = "importerrecords"
+    service_id = "importer-records"
 
     # Record specific configuration
     record_cls = ImporterRecord
@@ -129,7 +129,7 @@ class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
 
     # Common configuration
     permission_policy_cls = ImporterRecordPermissionPolicy
-    indexer_queue_name = "importerrecords"
+    indexer_queue_name = service_id
 
     components = [
         DataComponent,
