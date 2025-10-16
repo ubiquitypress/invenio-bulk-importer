@@ -87,6 +87,11 @@ class InvenioBulkImporter(object):
         )
 
 
+def finalize_app(app):
+    """Finalize app."""
+    init(app)
+
+
 def api_finalize_app(app):
     """Finalize app for api."""
     init(app)

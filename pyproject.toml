@@ -88,6 +88,9 @@ importerrecords = "invenio_bulk_importer.records.mappings"
 [project.entry-points."invenio_i18n.translations"]
 messages = "invenio_bulk_importer"
 
+[project.entry-points."invenio_base.finalize_app"]
+invenio_bulk_importer = "invenio_bulk_importer.ext:finalize_app"
+
 [project.entry-points."invenio_base.api_finalize_app"]
 invenio_bulk_importer = "invenio_bulk_importer.ext:api_finalize_app"
 
