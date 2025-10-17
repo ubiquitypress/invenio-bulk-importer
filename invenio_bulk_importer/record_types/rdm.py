@@ -21,6 +21,7 @@ from invenio_bulk_importer.record_types.base import (
     CommunityMixin,
     FileMixin,
     InvenioRecordMixin,
+    PermissionsMixin,
     RecordType,
 )
 
@@ -28,7 +29,9 @@ from ..proxies import current_importer_tasks_service as tasks_service
 from ..records.api import ImporterRecord
 
 
-class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
+class RDMRecord(
+    PermissionsMixin, CommunityMixin, FileMixin, InvenioRecordMixin, RecordType
+):
     """RDM Record validation and loading class."""
 
     def __init__(
@@ -134,6 +137,7 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
         if mode == "import":  # Only validate further if we are importing records.
             self._verify_files_accessible(self._files)
             self._verify_communities_exist(self._serializer_communities)
+            self._validate_permissions(self._serializer_record_data)
             self._verify_rdm_record_correctness(self._serializer_record_data)
             self._verify_pre_commit_correctness(self._record)
         elif mode == "delete":
@@ -407,6 +411,12 @@ class RDMRecord(CommunityMixin, FileMixin, InvenioRecordMixin, RecordType):
                         system_identity,
                         id_=request.id,
                         action="accept",
+                        data={
+                            "payload": {
+                                "content": "This record is accepted automatically using the bulk importer.",
+                                "format": "html",
+                            }
+                        },
                         send_notification=False,
                         uow=uow,
                     )

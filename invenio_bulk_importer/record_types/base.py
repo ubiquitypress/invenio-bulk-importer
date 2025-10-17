@@ -63,8 +63,6 @@ class RecordType(ABC):
 
     def _add_error(self, error: dict) -> None:
         """Add an error to the errors list."""
-        if not isinstance(error, dict):
-            raise TypeError("Error must be an instance of ErrorMessage.")
         self._errors.append(error)
         self.is_successful = False
 
@@ -72,6 +70,35 @@ class RecordType(ABC):
     def validated_record_dict(self) -> dict | None:
         """Return the validated record dictionary."""
         return self._record
+
+
+class PermissionsMixin:
+    """Mising to handle community/record permissions."""
+
+    def _validate_permissions(self, serializer_data):
+        """Validate that public record cannot be added to restricted community.
+
+        This code mimics
+        `invenio_rdm_records.requests.community_inclusion.is_access_restriction_valid`.
+        """
+        is_record_public = serializer_data["access"]["record"] == "public"
+
+        for community_id in self._community_uuids["ids"]:
+            community = current_communities.service.read(
+                id_=community_id,
+                identity=system_identity,
+            )
+            is_community_restricted = (
+                community.data["access"]["visibility"] == "restricted"
+            )
+            if is_record_public and is_community_restricted:
+                self._add_error(
+                    dict(
+                        type="invalid_access_restriction",
+                        loc="access.record",
+                        msg="A public record cannot be added to a restricted community",
+                    )
+                )
 
 
 class CommunityMixin:

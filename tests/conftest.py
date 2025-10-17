@@ -933,6 +933,13 @@ def minimal_community():
 
 
 @pytest.fixture()
+def minimal_restricted_community(minimal_community):
+    """Minimal restricted community data."""
+    minimal_community["access"]["visibility"] = "restricted"
+    return minimal_community
+
+
+@pytest.fixture()
 def community_owner(UserFixture, app, db):
     """Community owner."""
     u = UserFixture(
@@ -943,19 +950,31 @@ def community_owner(UserFixture, app, db):
     return u
 
 
-@pytest.fixture()
-def community(running_app, community_type_record, community_owner, minimal_community):
-    """Create community using the minimal fixture data."""
-    slug = minimal_community["slug"]
+def _community(community, owner):
+    slug = community["slug"]
     try:
         c = current_communities.service.record_cls.pid.resolve(slug)
     except PIDDoesNotExistError:
         c = current_communities.service.create(
-            community_owner.identity,
-            minimal_community,
+            owner.identity,
+            community,
         )
         Community.index.refresh()
     return c
+
+
+@pytest.fixture()
+def community(running_app, community_type_record, community_owner, minimal_community):
+    """Create community using the minimal fixture data."""
+    return _community(minimal_community, community_owner)
+
+
+@pytest.fixture()
+def restricted_community(
+    running_app, community_type_record, community_owner, minimal_restricted_community
+):
+    """Create a restricted community."""
+    return _community(minimal_restricted_community, community_owner)
 
 
 #

@@ -116,6 +116,23 @@ def test_community_verification(rdm_record_instance, community):
     assert rdm_record_instance._community_uuids.get("ids")
 
 
+def test_restricted_community_verification(rdm_record_instance, restricted_community):
+    """Test that communities are verified correctly."""
+    communities = [restricted_community.id]
+    rdm_record_instance._verify_communities_exist(communities)
+    rdm_record_instance._validate_permissions(
+        rdm_record_instance._serializer_record_data
+    )
+    assert rdm_record_instance.is_successful is False
+    assert rdm_record_instance.errors == [
+        {
+            "loc": "access.record",
+            "msg": "A public record cannot be added to a restricted community",
+            "type": "invalid_access_restriction",
+        },
+    ]
+
+
 def test_community_verification_missing_community(rdm_record_instance, community):
     """Test that communities that are missing in invenio fail validation."""
     communities = ["test-community-1"]
