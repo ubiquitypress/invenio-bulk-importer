@@ -8,8 +8,6 @@
 
 """Rdm specific record resources."""
 
-import traceback
-
 from flask import current_app
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records_resources.services.uow import unit_of_work
@@ -168,9 +166,10 @@ class RDMRecord(
                     dict(
                         type="unexpected_error",
                         loc="run",
-                        msg=f"An unexpected error occurred: {traceback.format_exc()}",
+                        msg="An unexpected error occurred",
                     )
                 )
+            current_app.logger.exception("Unexcepted error.")
         return
 
     def _create_record(self, importer_record, uow):
@@ -185,7 +184,6 @@ class RDMRecord(
             self._doi_minting(record_item, data, uow)
 
         except Exception as e:
-            traceback.print_exc()
             self._add_error(
                 dict(
                     type="record_creation_error",
@@ -193,6 +191,7 @@ class RDMRecord(
                     msg=f"Error creating record: {str(e)}",
                 )
             )
+            current_app.logger.exception("Error creating a new record.")
             raise
         self._add_files_to_record(self._importer_record, record_item)
         self._publish_record(record_item, uow)
@@ -228,7 +227,6 @@ class RDMRecord(
                 system_identity, existing_record_id, tombstone_info
             )
         except Exception as e:
-            traceback.print_exc()
             self._add_error(
                 dict(
                     type="record_deletion_error",
@@ -236,6 +234,7 @@ class RDMRecord(
                     msg=f"Error deleting record ({existing_record_id}): {str(e)}",
                 )
             )
+            current_app.logger.exception("Error deleting a record.")
             raise
         return record_item
 
@@ -274,7 +273,6 @@ class RDMRecord(
                 uow=uow,
             )
         except Exception as e:
-            traceback.print_exc()
             self._add_error(
                 dict(
                     type="record_update_error",
@@ -282,6 +280,7 @@ class RDMRecord(
                     msg=f"Error updating record ({existing_record_id}): {str(e)}",
                 )
             )
+            current_app.logger.exception("Error creating new revision.")
             raise
         return record_item
 
@@ -311,7 +310,6 @@ class RDMRecord(
                 uow=uow,
             )
         except Exception as e:
-            traceback.print_exc()
             self._add_error(
                 dict(
                     type="record_update_error",
@@ -319,6 +317,7 @@ class RDMRecord(
                     msg=f"Error creating new version of record ({existing_record_id}): {str(e)}",
                 )
             )
+            current_app.logger.exception("Error creating a new version.")
             raise
         return record_item
 
@@ -367,6 +366,7 @@ class RDMRecord(
                             msg=f"Error uploading and commiting '{file_key}' to record '{record_item.id}': {str(e)}",
                         )
                     )
+                    current_app.logger.exception("Error adding a file to the record.")
                     raise
         except Exception as e:
             self._add_error(
@@ -376,6 +376,7 @@ class RDMRecord(
                     msg=f"Error initializing file for '{record_item.id}': {str(e)}",
                 )
             )
+            current_app.logger.exception("Error adding files to the record.")
             raise
 
     def _add_record_to_communities(self, community_uuids: dict, record, uow) -> None:
@@ -428,6 +429,7 @@ class RDMRecord(
                         msg=f"Error adding record '{record.id}' to community '{community_id}': {str(e)}",
                     )
                 )
+                current_app.logger.exception("Error publishing record.")
                 raise
 
     def _publish_record(self, record_item, uow):
