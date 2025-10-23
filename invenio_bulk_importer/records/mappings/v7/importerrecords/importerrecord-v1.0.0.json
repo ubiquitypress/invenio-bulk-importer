@@ -1,0 +1,90 @@
+{
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "created": {
+          "type": "date"
+        },
+        "updated": {
+          "type": "date"
+        },
+        "indexed_at": {
+          "type": "date"
+        },
+        "id": {
+          "type": "keyword"
+        },
+        "uuid": {
+          "type": "keyword"
+        },
+        "version_id": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "message": {
+          "type": "text"
+        },
+        "src_data": {
+          "type": "object",
+          "dynamic": true
+        },
+        "serializer_data": {
+          "type": "object",
+          "dynamic": true
+        },
+        "transformed_data": {
+          "type": "object",
+          "dynamic": true
+        },
+        "community_uuids": {
+          "type": "object",
+          "dynamic": true
+        },
+        "record_files": {
+          "type": "keyword"
+        },
+        "validated_record_files": {
+          "type": "nested",
+          "dynamic": true,
+          "properties": {
+          }
+        },
+        "existing_record_id": {
+          "type": "keyword"
+        },
+        "generated_record_id": {
+          "type": "keyword"
+        },
+        "errors": {
+          "type": "nested",
+          "properties": {
+            "msg": {
+              "type": "text"
+            },
+            "loc": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "task_id": {
+          "type": "keyword"
+        },
+        "task": {
+          "type": "object",
+          "properties": {
+            "@v": {
+              "type": "keyword"
+            },
+            "id": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
