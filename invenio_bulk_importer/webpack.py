@@ -39,7 +39,7 @@ bulk_importer = WebpackThemeBundle(
                 "react": "^16.13.0",
                 "react-dom": "^16.13.0",
                 "react-i18next": "^11.11.0",
-                "react-overridable": "^0.0.3",
+                "react-overridable": "^1.0.0",
                 "react-redux": "^7.2.0",
                 "react-searchkit": "^3.0.0",
                 "redux": "^4.0.0",
