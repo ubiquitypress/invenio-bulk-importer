@@ -40,6 +40,7 @@ dependencies = [
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",
   "invenio-rdm-records>=20.0.0,<21.0.0",
+  "invenio-search[opensearch2]>=3.0.0,<4.0.0",
   "marshmallow>=3.26.1",
   "pydantic>=2.11.4,<3.0.0",
 ]
@@ -55,12 +56,6 @@ tests = [
   "ipdb",
 ]
 
-opensearch2 = [
-    "invenio-search[opensearch2]>=3.0.0,<4.0.0",
-]
-elasticsearch7 = [
-    "invenio-search[elasticsearch7]>=3.0.0,<4.0.0",
-]
 # Entrypoints
 [project.entry-points."invenio_base.apps"]
 invenio_bulk_importer = "invenio_bulk_importer:InvenioBulkImporter"
