@@ -7,6 +7,7 @@
 #
 
 """Importer task links."""
+
 from invenio_records_resources.services.base.links import Link
 
 
