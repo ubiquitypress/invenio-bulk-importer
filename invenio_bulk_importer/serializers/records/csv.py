@@ -8,6 +8,7 @@
 
 """CSV serializer for RDM records."""
 
+from dataclasses import field
 from typing import Annotated, Literal, Optional
 
 from flask import current_app
@@ -155,6 +156,8 @@ class MetadataSchema(BaseModel):
     identifiers: list[BaseIdentifier] = Field(default_factory=list)
     related_identifiers: list[FullIdentifier] = Field(default_factory=list)
     rights: list[dict[str, str | dict[str, str]]] = Field(default_factory=list)
+    formats: list[str] = Field(default_factory=list)
+    sizes: list[str] = Field(default_factory=list)
 
     @field_validator("resource_type", mode="before")
     def validate_resource_type(cls, value):
@@ -180,6 +183,14 @@ class MetadataSchema(BaseModel):
             for reference in value.split("\n")
             if reference.strip()
         ]
+
+    @field_validator("formats", "sizes", mode="before")
+    def validate_list_fields(cls, value):
+        """Split using break lines to make a string a list.
+
+        It also strips the resulting strings to avoid issues down the road.
+        """
+        return [v.strip() for v in value.split("\n")]
 
     @model_validator(mode="before")
     def load_rights(cls, values):
