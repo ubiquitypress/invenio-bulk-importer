@@ -42,7 +42,7 @@ def test_importer_task_with_file_update_new_version(
 
     # Get Importer Records
     with admin_client.get(
-        f"/importer-records",
+        "/importer-records",
         headers=headers,
     ) as response:
         assert response.status_code == 200
@@ -78,8 +78,8 @@ def test_importer_task_with_file_update_new_version(
     ) as response:
         assert response.status_code == 200
         assert response.json["id"] == new_record_id
-        assert response.json["is_draft"] == False
-        assert response.json["is_published"] == True
+        assert response.json["is_draft"] is False
+        assert response.json["is_published"] is True
         assert (
             response.json["metadata"]["title"]
             == "Micraster ernsti Schlüter 2024, sp. nov."
@@ -87,7 +87,7 @@ def test_importer_task_with_file_update_new_version(
         assert response.json["versions"]["index"] == 2
         assert response.json["revision_id"] == 4
         assert response.json["status"] == "published"
-        assert response.json["files"]["entries"]["xml.xsd"]["size"] == 1663
+        assert response.json["files"]["entries"]["xml.xsd"]["size"] == 4726
         assert (
             response.json["parent"]["communities"]["entries"][0]["id"] == community.id
         )

@@ -1397,7 +1397,7 @@ def validated_ir_data():
                 "key": "xml.xsd",
                 "full_path": "https://www.w3.org/2001/03/xml.xsd",
                 "origin": "url",
-                "size": 1663,
+                "size": 4726,
             },
         ],
     }
