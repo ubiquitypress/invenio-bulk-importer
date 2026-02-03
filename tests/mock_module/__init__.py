@@ -9,7 +9,6 @@
 
 """Mock test module."""
 
-
 from flask import Blueprint
 
 
