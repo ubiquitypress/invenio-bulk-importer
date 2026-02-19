@@ -36,7 +36,7 @@ requires-python = ">=3.10"
 dependencies = [
   "boto3>=1.26.0,<2.0",
   "google-cloud-storage>=2.8.0,<3.2",
-  "invenio-administration>=4.0.0,<5.0.0",
+  "invenio-administration>=5.0.0,<6.0.0",
   "invenio-base>=2.0.0,<3.0.0",
   "invenio-i18n>=3.0.0,<4.0.0",
   "invenio-rdm-records>=24.0.0,<25.0.0",
