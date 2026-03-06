@@ -159,13 +159,19 @@ class MetadataSchema(BaseModel):
     formats: list[str] = Field(default_factory=list)
     sizes: list[str] = Field(default_factory=list)
 
+    @model_validator(mode="before")
+    def clean_empty_strings(cls, values):
+        """Convert empty strings to None before validation."""
+        if isinstance(values, dict):
+            return {k: None if v == "" else v for k, v in values.items()}
+        return values
+
     @field_validator("resource_type", mode="before")
     def validate_resource_type(cls, value):
         """Validate resource type."""
         if not value:
             raise ValueError("Missing 'resource_type.id'")
         return {"id": value.strip()}
-
     @field_validator("languages", mode="before")
     def validate_languages(cls, value):
         """Validate languages."""
@@ -405,6 +411,29 @@ class CSVRecordSchema(BaseModel):
     custom_fields: dict[str, str | dict | list] = Field(default_factory=dict)
     metadata: MetadataSchema
 
+    @model_validator(mode="before")
+    def clean_empty_strings(cls, values):
+        """Convert empty strings to None before validation.
+
+        Only cleans optional string fields, not required nested structures.
+        """
+        if not isinstance(values, dict):
+            return values
+
+        # Don't clean these required/complex fields
+        skip_fields = {'access', 'metadata', 'custom_fields'}
+
+        cleaned = {}
+        for k, v in values.items():
+            if k in skip_fields:
+                cleaned[k] = v
+            elif isinstance(v, str) and v == "":
+                cleaned[k] = None
+            else:
+                cleaned[k] = v
+
+        return cleaned
+
     @field_validator("pids", mode="before")
     def validate_references(cls, value):
         """Validate pids."""
@@ -433,27 +462,33 @@ class CSVRecordSchema(BaseModel):
         values["metadata"] = MetadataSchema(**values)
         return values
 
-    @model_validator(mode="before")
-    def load_custom_fields(cls, values):
-        """Load custom fields from config."""
-        custom_fields = dict()
-        config = current_app.config.get("BULK_IMPORTER_CUSTOM_FIELDS", {}).get(
-            "csv_rdm_record_serializer", []
-        )
-        for t in config:
-            result = obj_or_import_string(t["transformer"])(values)
-            # only add to custom fields if the transformer returns a value
-            if result:
-                custom_fields[t["field"]] = result
-        values["custom_fields"] = custom_fields
-        return values
-
 
 class DeleteCSVRecordSchema(BaseModel):
     """CSV RDM Record Pydantic schema for deletions."""
 
     id: str
     reason: str | None = Field(default=None)
+
+    @model_validator(mode="before")
+    def clean_empty_strings(cls, values):
+        """Convert empty strings to None before validation.
+
+        Skips the 'id' field since it's required.
+        """
+        if not isinstance(values, dict):
+            return values
+
+        cleaned = {}
+        for k, v in values.items():
+            # Don't clean the required 'id' field
+            if k == 'id':
+                cleaned[k] = v
+            elif isinstance(v, str) and v == "":
+                cleaned[k] = None
+            else:
+                cleaned[k] = v
+
+        return cleaned
 
     @field_validator("id", mode="before")
     def validate_id(cls, value):
