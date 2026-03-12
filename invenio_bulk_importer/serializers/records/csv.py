@@ -413,26 +413,10 @@ class CSVRecordSchema(BaseModel):
 
     @model_validator(mode="before")
     def clean_empty_strings(cls, values):
-        """Convert empty strings to None before validation.
-
-        Only cleans optional string fields, not required nested structures.
-        """
+        """Convert empty strings to None before other model transformations."""
         if not isinstance(values, dict):
             return values
-
-        # Don't clean these required/complex fields
-        skip_fields = {'access', 'metadata', 'custom_fields'}
-
-        cleaned = {}
-        for k, v in values.items():
-            if k in skip_fields:
-                cleaned[k] = v
-            elif isinstance(v, str) and v == "":
-                cleaned[k] = None
-            else:
-                cleaned[k] = v
-
-        return cleaned
+        return {k: None if v == "" else v for k, v in values.items()}
 
     @field_validator("pids", mode="before")
     def validate_references(cls, value):
@@ -462,6 +446,22 @@ class CSVRecordSchema(BaseModel):
         values["metadata"] = MetadataSchema(**values)
         return values
 
+    @model_validator(mode="before")
+    def load_custom_fields(cls, values):
+        """Load custom fields from config."""
+        custom_fields = dict()
+        config = current_app.config.get("BULK_IMPORTER_CUSTOM_FIELDS", {}).get(
+            "csv_rdm_record_serializer", {}
+        )
+
+        for field in config:
+            result = obj_or_import_string(field["transformer"])(values)
+            if result:
+                custom_fields[field["field"]] = result
+
+        values["custom_fields"] = custom_fields
+        return values
+
 
 class DeleteCSVRecordSchema(BaseModel):
     """CSV RDM Record Pydantic schema for deletions."""
@@ -481,7 +481,7 @@ class DeleteCSVRecordSchema(BaseModel):
         cleaned = {}
         for k, v in values.items():
             # Don't clean the required 'id' field
-            if k == 'id':
+            if k == "id":
                 cleaned[k] = v
             elif isinstance(v, str) and v == "":
                 cleaned[k] = None
