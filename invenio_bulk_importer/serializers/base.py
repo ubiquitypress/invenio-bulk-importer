@@ -31,6 +31,11 @@ class Serializer(ABC):
 class CSVSerializer(Serializer):
     """Base class for all CSV serializers."""
 
+    def _clean_row(self, row):
+        """Remove empty strings replacing them wit `None` values."""
+        return {k: v for k, v in row.items() if v != ""}
+
     def load(self, stream: IO, **kwargs) -> Iterator[dict]:
         """Load the content of the stream using ``DictReader``."""
-        yield from csv.DictReader(stream, **kwargs)
+        for row in csv.DictReader(stream, **kwargs):
+            yield self._clean_row(row)

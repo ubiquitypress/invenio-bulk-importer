@@ -19,4 +19,5 @@ def csv_rdm_record():
     """CSV RDM Record."""
     path = Path(__file__).parent / "data/rdm_records.csv"
     with path.open() as f:
-        yield from csv.DictReader(f, delimiter=",", quotechar='"')
+        for row in csv.DictReader(f, delimiter=",", quotechar='"'):
+            yield {k: v for k, v in row.items() if v != ""}
