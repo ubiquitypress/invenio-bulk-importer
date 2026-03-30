@@ -7,7 +7,7 @@ def test_files_verification(rdm_record_instance):
         "README.rst",
         "s3://service-rua/up/core/fixtures/key_help.json",
         "gs://cloud-samples-data/storage/static-hosting/index.html",
-        "https://www.w3.org/2001/03/xml.xsd",
+        "https://httpbin.org/json",
     ]
 
     rdm_record_instance._verify_files_accessible(files)
@@ -34,10 +34,10 @@ def test_files_verification(rdm_record_instance):
             "size": 38,
         },
         {
-            "key": "xml.xsd",
-            "full_path": "https://www.w3.org/2001/03/xml.xsd",
+            "key": "json",
+            "full_path": "https://httpbin.org/json",
             "origin": "url",
-            "size": 4726,
+            "size": 429,
         },
     ]
 
@@ -92,7 +92,7 @@ def test_files_verification_gs_failures(rdm_record_instance):
 
 def test_files_verification_url_failures(rdm_record_instance):
     """Test that files are verified correctly."""
-    files = ["https://www.w3.org/2001/03/no_xml.xsd"]
+    files = ["https://httpbin.org/wrong"]
 
     rdm_record_instance._verify_files_accessible(files)
     # Verify files accessibility
@@ -101,7 +101,7 @@ def test_files_verification_url_failures(rdm_record_instance):
         dict(
             type="file_not_accessible",
             loc="files",
-            msg="Error accessing URL file 'https://www.w3.org/2001/03/no_xml.xsd' returned status code 404.",
+            msg="Error accessing URL file 'https://httpbin.org/wrong' returned status code 404.",
         )
     ]
 

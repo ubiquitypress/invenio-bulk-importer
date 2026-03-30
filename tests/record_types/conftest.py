@@ -179,7 +179,7 @@ def serialized_record():
             "README.rst",
             "s3://service-rua/up/core/fixtures/key_help.json",
             "gs://cloud-samples-data/storage/static-hosting/index.html",
-            "https://www.w3.org/2001/03/xml.xsd",
+            "https://httpbin.org/json",
         ],
         "access": {
             "record": "public",

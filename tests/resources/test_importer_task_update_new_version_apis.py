@@ -87,7 +87,7 @@ def test_importer_task_with_file_update_new_version(
         assert response.json["versions"]["index"] == 2
         assert response.json["revision_id"] == 4
         assert response.json["status"] == "published"
-        assert response.json["files"]["entries"]["xml.xsd"]["size"] == 4726
+        assert response.json["files"]["entries"]["json"]["size"] == 429
         assert (
             response.json["parent"]["communities"]["entries"][0]["id"] == community.id
         )

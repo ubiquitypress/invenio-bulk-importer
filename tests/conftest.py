@@ -1121,7 +1121,7 @@ def validated_ir_data():
             "title": "Micraster ernsti Schlüter 2024, sp. nov.",
             "version": "1.0.1",
             "keywords": "custom",
-            "filenames": "https://www.w3.org/2001/03/xml.xsd\n",
+            "filenames": "https://httpbin.org/json\n",
             "publisher": "Ubiquity Press",
             "rights.id": "cc0-1.0\n\ncc0-4.0",
             "communities": "test-community",
@@ -1373,7 +1373,7 @@ def validated_ir_data():
             },
         },
         "community_uuids": None,
-        "record_files": ["https://www.w3.org/2001/03/xml.xsd"],
+        "record_files": ["https://httpbin.org/json"],
         "validated_record_files": [
             {
                 "key": "article.txt",
@@ -1394,10 +1394,10 @@ def validated_ir_data():
                 "size": 38,
             },
             {
-                "key": "xml.xsd",
-                "full_path": "https://www.w3.org/2001/03/xml.xsd",
+                "key": "json",
+                "full_path": "https://httpbin.org/json",
                 "origin": "url",
-                "size": 4726,
+                "size": 429,
             },
         ],
     }
