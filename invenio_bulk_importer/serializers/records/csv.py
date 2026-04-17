@@ -429,6 +429,7 @@ class CSVRecordSchema(BaseModel):
                 "until": embargo_until,
                 "reason": embargo_reason,
             }
+            # FIXME: a validation error should raise if record and files are both public
         values["access"] = access
         values["metadata"] = MetadataSchema(**values)
         return values
