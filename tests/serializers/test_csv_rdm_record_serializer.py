@@ -226,6 +226,18 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         },
     ]
 
+    assert metadata["dates"] == [
+        {
+            "date": "2020-12-31",
+            "type": {"id": "other"},
+            "description": "Random test date",
+        },
+        {
+            "date": "2025-12-31",
+            "type": {"id": "other"},
+        },
+    ]
+
 
 def test_schema_without_custom_fields(running_app, csv_rdm_record):
     """Test validation without custom fields to see if it causes an issue."""
