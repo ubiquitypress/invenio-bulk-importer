@@ -8,7 +8,6 @@
 
 """CSV serializer for RDM records."""
 
-from dataclasses import field
 from typing import Annotated, Literal, Optional
 
 from flask import current_app
@@ -131,6 +130,31 @@ class Date(BaseModel):
     description: str | None = Field(default=None)
 
 
+class Funder(BaseModel):
+    """Funder schema."""
+
+    id: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+
+class Award(BaseModel):
+    """Award schema."""
+
+    id: str | None = Field(default=None)
+    number: str | None = Field(default=None)
+    title: str | None = Field(default=None)
+    acronym: str | None = Field(default=None)
+    program: str | None = Field(default=None)
+    identifiers: list[BaseIdentifier] | None = Field(default=None)
+
+
+class Funding(BaseModel):
+    """Schema for funding."""
+
+    funder: Funder
+    award: Award | None = Field(default=None)
+
+
 class MetadataSchema(BaseModel):
     """Schema for handling metadata fields."""
 
@@ -167,6 +191,7 @@ class MetadataSchema(BaseModel):
     rights: list[dict[str, str | dict[str, str]]] = Field(default_factory=list)
     formats: list[str] = Field(default_factory=list)
     sizes: list[str] = Field(default_factory=list)
+    funding: list[Funding] = Field(default_factory=list)
 
     @field_validator("resource_type", mode="before")
     def validate_resource_type(cls, value):
@@ -406,6 +431,28 @@ class MetadataSchema(BaseModel):
                 }
             )
         values["dates"] = output
+        return values
+
+    @model_validator(mode="before")
+    def load_funding(cls, values):
+        """Load funding by pairing funders with awards by row index.
+
+        Uses ``drop_empty=False`` so a blank line in the awards columns
+        stays positionally aligned with its funder.
+        """
+        funders = process_grouped_fields(values, "funders", drop_empty=False)
+        awards = process_grouped_fields(values, "awards", drop_empty=False)
+
+        output = []
+        for i, funder in enumerate(funders):
+            if all(v is None for v in funder.values()):
+                continue
+            entry = {"funder": funder}
+            award = awards[i] if i < len(awards) else None
+            if award and any(v is not None for v in award.values()):
+                entry["award"] = award
+            output.append(entry)
+        values["funding"] = output
         return values
 
 
