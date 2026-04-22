@@ -105,3 +105,18 @@ def create_invenio_app_rdm_communities_blueprint(app):
     blueprint.add_url_rule("/communities/<pid_value>/", view_func=communities_home)
 
     return blueprint
+
+
+def create_importer_task_blueprint(app):
+    """Register blueprint routes on app."""
+    blueprint = Blueprint(
+        "invenio_bulk_importer_tasks_mock_module",
+        __name__,
+    )
+
+    @blueprint.route("/importer-tasks/<pid_value>")
+    def task_detail(id):
+        return "fake detail page"
+
+    return blueprint
+

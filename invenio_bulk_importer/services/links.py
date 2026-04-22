@@ -8,16 +8,15 @@
 
 """Importer task links."""
 
-from invenio_records_resources.services.base.links import Link
+from invenio_records_resources.services import EndpointLink
 
 
-class ILink(Link):
+class ImporterLink(EndpointLink):
     """Short cut for writing record links."""
 
     @staticmethod
-    def vars(record, vars):
+    def vars(obj, vars):
         """Variables for the URI template."""
-        # Some records don't have record.pid.pid_value yet (e.g. drafts)
-        pid_value = getattr(record, "pid", None)
+        pid_value = getattr(obj, "pid", None)
         if pid_value:
-            vars.update({"id": record.id})
+            vars.update({"id": obj.id})

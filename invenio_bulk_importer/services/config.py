@@ -8,12 +8,13 @@
 
 """Importer service configuration."""
 
-from invenio_records_resources.services import FileLink, FileServiceConfig
+from invenio_records_resources.services import FileServiceConfig
 from invenio_records_resources.services.base.config import (
     ConfiguratorMixin,
     FromConfigSearchOptions,
     SearchOptionsMixin,
 )
+from invenio_records_resources.services.files.links import FileEndpointLink
 from invenio_records_resources.services.records import RecordServiceConfig
 from invenio_records_resources.services.records.components import DataComponent
 from invenio_records_resources.services.records.config import (
@@ -30,7 +31,7 @@ from invenio_bulk_importer.services import facets
 
 from ..records.api import ImporterRecord, ImporterTask
 from .components import ImporterRecordServiceComponent, ImporterTaskServiceComponent
-from .links import ILink
+from .links import ImporterLink
 from .permissions import ImporterRecordPermissionPolicy, ImporterTaskPermissionPolicy
 from .schemas import ImporterRecordSchema, ImporterTaskSchema
 
@@ -76,10 +77,7 @@ class ImporterTaskServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     ]
 
     links_item = {
-        "self": ILink("{+api}/importer-tasks/{id}"),
-        "self_html": ILink("{+ui}/importer-tasks/{id}"),
-        "edit_html": ILink("{+ui}/importer-tasks/{id}/edit"),
-        "metadata": ILink("{+api}/importer-tasks/{id}/metadata"),
+        "self": ImporterLink("importer-tasks.read", params=["pid_value"]),
     }
 
 
@@ -93,7 +91,7 @@ class ImporterTaskFileServiceConfig(FileServiceConfig, ConfiguratorMixin):
     record_cls = ImporterTask
 
     file_links_item = {
-        "self": FileLink("{+api}/importer-tasks/{id}/{+key}"),
+        "self": FileEndpointLink("importer-tasks.read_metadata_file", params=["pid_value"])
     }
 
 
@@ -137,8 +135,5 @@ class ImporterRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     ]
 
     links_item = {
-        "self": ILink("{+api}/importer-records/{id}"),
-        "self_html": ILink("{+ui}/importer-records/{id}"),
-        "edit_html": ILink("{+ui}/importer-records/{id}/edit"),
-        "metadata": ILink("{+api}/importer-records/{id}/metadata"),
+        "self": ImporterLink("importer-records.read", params=["pid_value"]),
     }

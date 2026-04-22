@@ -87,10 +87,11 @@ def create_app(instance_path, entry_points):
 def extra_entry_points():
     """Extra entrypoints."""
     return {
-        "invenio_base.blueprints": [
+        "invenio_base.api_blueprints": [
             "invenio_app_rdm_records = tests.mock_module:create_invenio_app_rdm_records_blueprint",  # noqa
             "invenio_app_rdm_requests = tests.mock_module:create_invenio_app_rdm_requests_blueprint",  # noqa
             "invenio_app_rdm_communities = tests.mock_module:create_invenio_app_rdm_communities_blueprint",  # noqa
+            "imvenio_bulk_importer_tasks = tests.mock_module:create_importer_task_blueprint",  # noqa
         ],
     }
 
