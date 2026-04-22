@@ -123,6 +123,14 @@ class Contributor(BaseModel):
     role: Role
 
 
+class Date(BaseModel):
+    """Schema for date"""
+
+    date: str
+    type: dict[str, str]
+    description: str | None = Field(default=None)
+
+
 class MetadataSchema(BaseModel):
     """Schema for handling metadata fields."""
 
@@ -149,6 +157,7 @@ class MetadataSchema(BaseModel):
     locations: Location | dict = Field(default_factory=dict)
     creators: list[Creator] = Field(min_length=1)
     contributors: list[Contributor] = Field(default_factory=list)
+    dates: list[Date] = Field(default_factory=list)
     subjects: list[dict[str, str]] = Field(default_factory=list)
     references: list[dict[str, str]] = Field(
         default_factory=list, alias="references.reference"
@@ -381,6 +390,22 @@ class MetadataSchema(BaseModel):
 
         values["creators"] = load_creatibutor(values, "creators")
         values["contributors"] = load_creatibutor(values, "contributors")
+        return values
+
+    @model_validator(mode="before")
+    def load_dates(cls, values):
+        """Load date."""
+        temp_out = process_grouped_fields(values, "dates")
+        output = []
+        for date in temp_out:
+            output.append(
+                {
+                    "date": date.get("date"),
+                    "type": {"id": date.get("type")},
+                    "description": date.get("description"),
+                }
+            )
+        values["dates"] = output
         return values
 
 
