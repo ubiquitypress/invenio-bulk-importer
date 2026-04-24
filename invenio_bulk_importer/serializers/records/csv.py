@@ -446,7 +446,7 @@ class MetadataSchema(BaseModel):
             output.append(
                 {
                     "date": date.get("date"),
-                    "type": {"id": date.get("type")},
+                    "type": {"id": date.get("type.id")},
                     "description": date.get("description"),
                 }
             )
