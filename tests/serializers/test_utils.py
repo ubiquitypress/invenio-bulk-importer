@@ -39,6 +39,15 @@ def test_empty_input():
     assert process_grouped_fields({"foo": "bar"}, "rights") == []
 
 
+def test_non_string_values_are_skipped():
+    """Non-string values (e.g. already-parsed fields) are ignored, not crashed on."""
+    original = {
+        "rights.id": "cc-0",
+        "rights.parsed": ["already", "a", "list"],
+    }
+    assert process_grouped_fields(original, "rights") == [{"id": "cc-0"}]
+
+
 def test_whitespace_is_stripped():
     """Values are stripped consistently."""
     original = {"rights.id": "  cc-0  \n  cc-by-4.0  "}

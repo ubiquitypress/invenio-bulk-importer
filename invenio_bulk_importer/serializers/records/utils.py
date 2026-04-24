@@ -86,7 +86,7 @@ def process_grouped_fields(
     split = {
         key[len(pfx) :]: value.split("\n")
         for key, value in original.items()
-        if key.startswith(pfx)
+        if key.startswith(pfx) and isinstance(value, str)
     }
     num_items = max((len(v) for v in split.values()), default=0)
 

@@ -95,6 +95,12 @@ class Affiliation(BaseModel):
     id: str | None = Field(default=None)
     name: str | None = Field(default=None)
 
+    @model_validator(mode="after")
+    def _require_id_or_name(self) -> "Affiliation":
+        if not self.id and not self.name:
+            raise ValueError("Affiliation requires either 'id' or 'name'.")
+        return self
+
 
 class PersonOrOrg(BaseModel):
     """Schema for person or organization."""
@@ -136,6 +142,12 @@ class Funder(BaseModel):
     id: str | None = Field(default=None)
     name: str | None = Field(default=None)
 
+    @model_validator(mode="after")
+    def _require_id_or_name(self) -> "Funder":
+        if not self.id and not self.name:
+            raise ValueError("Funder requires either 'id' or 'name'.")
+        return self
+
 
 class Award(BaseModel):
     """Award schema."""
@@ -146,6 +158,14 @@ class Award(BaseModel):
     acronym: str | None = Field(default=None)
     program: str | None = Field(default=None)
     identifiers: list[BaseIdentifier] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def _require_id_or_number_or_title(self) -> "Award":
+        if not self.id and not (self.number or self.title):
+            raise ValueError(
+                "Award requires either 'id' or either 'number' or 'title'."
+            )
+        return self
 
 
 class Funding(BaseModel):
