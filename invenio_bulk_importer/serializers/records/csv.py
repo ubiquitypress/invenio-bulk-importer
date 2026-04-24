@@ -8,7 +8,6 @@
 
 """CSV serializer for RDM records."""
 
-from dataclasses import field
 from typing import Annotated, Literal, Optional
 
 from flask import current_app
@@ -96,6 +95,12 @@ class Affiliation(BaseModel):
     id: str | None = Field(default=None)
     name: str | None = Field(default=None)
 
+    @model_validator(mode="after")
+    def _require_id_or_name(self) -> "Affiliation":
+        if not self.id and not self.name:
+            raise ValueError("Affiliation requires either 'id' or 'name'.")
+        return self
+
 
 class PersonOrOrg(BaseModel):
     """Schema for person or organization."""
@@ -129,6 +134,45 @@ class Date(BaseModel):
     date: str
     type: dict[str, str]
     description: str | None = Field(default=None)
+
+
+class Funder(BaseModel):
+    """Funder schema."""
+
+    id: str | None = Field(default=None)
+    name: str | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def _require_id_or_name(self) -> "Funder":
+        if not self.id and not self.name:
+            raise ValueError("Funder requires either 'id' or 'name'.")
+        return self
+
+
+class Award(BaseModel):
+    """Award schema."""
+
+    id: str | None = Field(default=None)
+    number: str | None = Field(default=None)
+    title: str | None = Field(default=None)
+    acronym: str | None = Field(default=None)
+    program: str | None = Field(default=None)
+    identifiers: list[BaseIdentifier] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def _require_id_or_number_or_title(self) -> "Award":
+        if not self.id and not (self.number or self.title):
+            raise ValueError(
+                "Award requires either 'id' or either 'number' or 'title'."
+            )
+        return self
+
+
+class Funding(BaseModel):
+    """Schema for funding."""
+
+    funder: Funder
+    award: Award | None = Field(default=None)
 
 
 class MetadataSchema(BaseModel):
@@ -167,6 +211,7 @@ class MetadataSchema(BaseModel):
     rights: list[dict[str, str | dict[str, str]]] = Field(default_factory=list)
     formats: list[str] = Field(default_factory=list)
     sizes: list[str] = Field(default_factory=list)
+    funding: list[Funding] = Field(default_factory=list)
 
     @field_validator("resource_type", mode="before")
     def validate_resource_type(cls, value):
@@ -406,6 +451,28 @@ class MetadataSchema(BaseModel):
                 }
             )
         values["dates"] = output
+        return values
+
+    @model_validator(mode="before")
+    def load_funding(cls, values):
+        """Load funding by pairing funders with awards by row index.
+
+        Uses ``drop_empty=False`` so a blank line in the awards columns
+        stays positionally aligned with its funder.
+        """
+        funders = process_grouped_fields(values, "funders", drop_empty=False)
+        awards = process_grouped_fields(values, "awards", drop_empty=False)
+
+        output = []
+        for i, funder in enumerate(funders):
+            if all(v is None for v in funder.values()):
+                continue
+            entry = {"funder": funder}
+            award = awards[i] if i < len(awards) else None
+            if award and any(v is not None for v in award.values()):
+                entry["award"] = award
+            output.append(entry)
+        values["funding"] = output
         return values
 
 

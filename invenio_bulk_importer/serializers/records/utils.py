@@ -55,38 +55,50 @@ def process_grouped_fields_via_column_title(
     return original
 
 
-def process_grouped_fields(original: dict, prefix: str) -> list:
-    """Process grouped fields in the input dictionary.
+def process_grouped_fields(
+    original: dict, prefix: str, drop_empty: bool = True
+) -> list[dict]:
+    r"""Process grouped fields in the input dictionary.
 
-    Args:
-        original (dict): The original dictionary containing grouped fields.
-        prefix (str): The prefix used to identify the grouped fields.
-    Returns:
-        list: A list of dictionaries representing the grouped fields.
+    Columns whose names start with ``<prefix>.`` are expected to contain
+    newline-separated values. Their cells are split and transposed into a
+    list of per-row dictionaries, one entry per line.
+
+    Example::
+
+        original = {
+            "rights.id":    "cc-by-4.0\\ncc-0",
+            "rights.title": "CC BY 4.0\\nCC 0",
+        }
+        process_grouped_fields(original, "rights") == [
+            {"id": "cc-by-4.0", "title": "CC BY 4.0"},
+            {"id": "cc-0",      "title": "CC 0"},
+        ]
+
+    :param original: The dictionary containing grouped fields.
+    :param prefix: The column-name prefix identifying the group.
+    :param drop_empty: If True (default), rows where every value is ``None``
+        are omitted. Set to False when positional alignment with another
+        group must be preserved (e.g. pairing funders with awards).
+    :return: A list of dictionaries, one per row.
     """
-    group_input = {
-        key: value for key, value in original.items() if key.startswith(f"{prefix}.")
+    pfx = f"{prefix}."
+    split = {
+        key[len(pfx) :]: value.split("\n")
+        for key, value in original.items()
+        if key.startswith(pfx) and isinstance(value, str)
     }
-    # Get a temporary list of item information for easier working.
-    try:
-        num_items = max(len(value.split("\n")) for value in group_input.values())
-    except Exception:
-        num_items = 0
+    num_items = max((len(v) for v in split.values()), default=0)
 
     output = []
-    keys = group_input.keys()
     for i in range(num_items):
-        item_dict = {}
-        for key in keys:
-            parts = key.split(".")
-            values = group_input[key].split("\n")
-            item_dict[".".join(parts[1:])] = (
-                values[i] if i < len(values) and values[i].strip() else None
-            )
-        # Remove list dict item if all values are None
-        if all(value is None for value in item_dict.values()):
+        item = {
+            subkey: (parts[i].strip() if i < len(parts) and parts[i].strip() else None)
+            for subkey, parts in split.items()
+        }
+        if drop_empty and all(v is None for v in item.values()):
             continue
-        output.append(item_dict)
+        output.append(item)
     return output
 
 

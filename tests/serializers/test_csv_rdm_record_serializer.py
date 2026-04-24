@@ -238,6 +238,29 @@ def test_record_transform_with_custom_fields(running_app, csv_rdm_record):
         },
     ]
 
+    assert metadata["funding"] == [
+        {
+            "funder": {
+                "id": "00k4n6c32",
+            },
+            "award": {"id": "00k4n6c32::755021"},
+        },
+        {
+            "funder": {
+                "id": "00k4n6c64",
+            },
+        },
+        {
+            "award": {
+                "number": "100",
+                "title": "Some award",
+            },
+            "funder": {
+                "id": "00k4n6c96",
+            },
+        },
+    ]
+
 
 def test_schema_without_custom_fields(running_app, csv_rdm_record):
     """Test validation without custom fields to see if it causes an issue."""
