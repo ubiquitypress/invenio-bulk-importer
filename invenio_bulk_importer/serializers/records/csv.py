@@ -227,17 +227,6 @@ class MetadataSchema(BaseModel):
             return []
         return [{"id": lang.strip()} for lang in value.split("\n") if lang.strip()]
 
-    @field_validator("references", mode="before")
-    def validate_references(cls, value):
-        """Validate references."""
-        if not value:
-            return []
-        return [
-            {"reference": reference.strip()}
-            for reference in value.split("\n")
-            if reference.strip()
-        ]
-
     @field_validator("formats", "sizes", mode="before")
     def validate_list_fields(cls, value):
         """Split using break lines to make a string a list.
@@ -245,6 +234,12 @@ class MetadataSchema(BaseModel):
         It also strips the resulting strings to avoid issues down the road.
         """
         return [v.strip() for v in value.split("\n")]
+
+    @model_validator(mode="before")
+    def validate_references(cls, values):
+        """Validate references."""
+        tmp_out = process_grouped_fields(values, "references")
+        return [{k: v for k, v in ref.items() if v} for ref in tmp_out]
 
     @model_validator(mode="before")
     def load_rights(cls, values):
