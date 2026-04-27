@@ -14,33 +14,39 @@ from typing import Any
 def process_grouped_fields_via_column_title(
     original: dict, group_prefix: str, main_key: str
 ) -> dict:
-    """Process grouped fields in the input dictionary, where column name dictates the grouping type and language.
+    """Process discriminator columns where the type (and optional lang) is encoded in the column name.
 
-    Column in CSV can be defined with a type and language (optional), e.g.:
-    - <group_prefix>.<type>.<lang>
-      - additional_descriptions.methods.eng
+    Columns are expected to be named ``<group_prefix>.<type>`` or
+    ``<group_prefix>.<type>.<lang>``. Each non-empty cell becomes one entry
+    under ``original[group_prefix]``; the cell value is stored under
+    ``main_key``, the type is stored as ``{"type": {"id": <type>}}``, and
+    the language (if present) as ``{"lang": {"id": <lang>}}``.
 
-    this would create:
+    Example::
 
-    "additional_descriptions": [
-        {<main_key>: "value in column", "type": {"id": "method"}, "lang": {"id": "eng"}}
-    ]
+        original = {
+            "additional_descriptions.methods.eng": "How we did it",
+            "additional_descriptions.abstract":    "A short summary",
+        }
+        process_grouped_fields_via_column_title(
+            original, "additional_descriptions", "description"
+        )
+        # original["additional_descriptions"] == [
+        #     {"description": "How we did it",
+        #      "type": {"id": "methods"}, "lang": {"id": "eng"}},
+        #     {"description": "A short summary",
+        #      "type": {"id": "abstract"}},
+        # ]
 
-    - <group_prefix>.<type>
-      - additional_titles.alternative-title
-
-    this would create:
-
-    "additional_descriptions": [
-        {<main_key>: "value in column", "type": {"id": "alternative-title"}}
-    ]
-
-    Args:
-        original (dict): The original dictionary containing grouped fields.
-        group_prefix (str): The prefix used to identify the grouped fields.
-        main_key (str): The main key used to identify the dict of an individual group.
-    Returns:
-        dict: A dictionary representing the grouped fields.
+    :param original: The dictionary containing the discriminator columns.
+        Mutated in place: the grouped output is written back under
+        ``group_prefix``.
+    :param group_prefix: The column-name prefix identifying the group
+        (e.g. ``"additional_descriptions"`` or ``"additional_titles"``).
+    :param main_key: The dict key under which the cell value is stored
+        in each entry (e.g. ``"description"`` or ``"title"``).
+    :return: The same ``original`` dictionary, with ``original[group_prefix]``
+        replaced by the list of parsed entries.
     """
     output = []
     for key, value in original.items():

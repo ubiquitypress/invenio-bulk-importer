@@ -154,7 +154,7 @@ class Award(BaseModel):
 
     id: str | None = Field(default=None)
     number: str | None = Field(default=None)
-    title: str | None = Field(default=None)
+    title: dict[str, str] | None = Field(default=None)
     acronym: str | None = Field(default=None)
     program: str | None = Field(default=None)
     identifiers: list[BaseIdentifier] | None = Field(default=None)
@@ -227,17 +227,6 @@ class MetadataSchema(BaseModel):
             return []
         return [{"id": lang.strip()} for lang in value.split("\n") if lang.strip()]
 
-    @field_validator("references", mode="before")
-    def validate_references(cls, value):
-        """Validate references."""
-        if not value:
-            return []
-        return [
-            {"reference": reference.strip()}
-            for reference in value.split("\n")
-            if reference.strip()
-        ]
-
     @field_validator("formats", "sizes", mode="before")
     def validate_list_fields(cls, value):
         """Split using break lines to make a string a list.
@@ -245,6 +234,12 @@ class MetadataSchema(BaseModel):
         It also strips the resulting strings to avoid issues down the road.
         """
         return [v.strip() for v in value.split("\n")]
+
+    @model_validator(mode="before")
+    def validate_references(cls, values):
+        """Validate references."""
+        tmp_out = process_grouped_fields(values, "references")
+        return [{k: v for k, v in ref.items() if v} for ref in tmp_out]
 
     @model_validator(mode="before")
     def load_rights(cls, values):
@@ -257,6 +252,8 @@ class MetadataSchema(BaseModel):
                 ident_dict["id"] = identifier.get("id")
             elif identifier.get("title"):
                 ident_dict["title"] = {"en": identifier.get("title")}
+            if desc := identifier.get("description"):
+                ident_dict["description"]["en"] = desc
             output.append(ident_dict)
         values["rights"] = output
         return values
@@ -446,7 +443,7 @@ class MetadataSchema(BaseModel):
             output.append(
                 {
                     "date": date.get("date"),
-                    "type": {"id": date.get("type")},
+                    "type": {"id": date.get("type.id")},
                     "description": date.get("description"),
                 }
             )
@@ -455,22 +452,26 @@ class MetadataSchema(BaseModel):
 
     @model_validator(mode="before")
     def load_funding(cls, values):
-        """Load funding by pairing funders with awards by row index.
-
-        Uses ``drop_empty=False`` so a blank line in the awards columns
-        stays positionally aligned with its funder.
-        """
-        funders = process_grouped_fields(values, "funders", drop_empty=False)
-        awards = process_grouped_fields(values, "awards", drop_empty=False)
+        """Load funding."""
+        funding = process_grouped_fields(values, "funding")
 
         output = []
-        for i, funder in enumerate(funders):
-            if all(v is None for v in funder.values()):
-                continue
-            entry = {"funder": funder}
-            award = awards[i] if i < len(awards) else None
-            if award and any(v is not None for v in award.values()):
-                entry["award"] = award
+        for f in funding:
+            entry = {"funder": {}}
+            if funder_id := f.get("funder.id"):
+                entry["funder"]["id"] = funder_id
+            if funder_name := f.get("funder.name"):
+                entry["funder"]["name"] = funder_name
+
+            if any(v is not None for k, v in f if k.startswith("award")):
+                entry["award"] = {}
+            if award_id := f.get("award.id"):
+                entry["award"]["id"] = award_id
+            if award_title := f.get("award.title"):
+                entry["award"]["id"] = {"en": award_title}
+            if award_number := f.get("award.nunmber"):
+                entry["award"]["number"] = award_number
+
             output.append(entry)
         values["funding"] = output
         return values
@@ -498,7 +499,7 @@ class CSVRecordSchema(BaseModel):
     metadata: MetadataSchema
 
     @field_validator("pids", mode="before")
-    def validate_references(cls, value):
+    def validate_pids(cls, value):
         """Validate pids."""
         if not value:
             return {}

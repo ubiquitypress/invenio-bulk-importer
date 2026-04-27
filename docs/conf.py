@@ -318,10 +318,28 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/", None),
-    # TODO: Configure external documentation references, eg:
-    # "Flask-Admin": ("https://flask-admin.readthedocs.io/en/latest/", None),
+    "python": ("https://docs.python.org/3/", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
 }
 
 # Autodoc configuraton.
 autoclass_content = "both"
+
+# Suppress nitpicky warnings for cross-references we cannot resolve cleanly.
+nitpick_ignore = [
+    # Pydantic autodoc reports the private module path; the public docs
+    # publish the class as ``pydantic.BaseModel``, so intersphinx does
+    # not match.
+    ("py:class", "pydantic.main.BaseModel"),
+    # No public Sphinx documentation available.
+    ("py:class", "flask_resources.serializers.csv.CSVSerializer"),
+    # Internal base class, not part of the exposed API.
+    ("py:class", "invenio_bulk_importer.serializers.base.CSVSerializer"),
+]
+
+# Sphinx mis-tokenizes PEP 585 generics like ``dict[str, Any]`` in some
+# annotations, splitting them across the comma into two unresolved refs.
+nitpick_ignore_regex = [
+    ("py:class", r"^dict\[str$"),
+    ("py:class", r"^Any\]$"),
+]
