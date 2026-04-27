@@ -252,6 +252,8 @@ class MetadataSchema(BaseModel):
                 ident_dict["id"] = identifier.get("id")
             elif identifier.get("title"):
                 ident_dict["title"] = {"en": identifier.get("title")}
+            if desc := identifier.get("description"):
+                ident_dict["description"]["en"] = desc
             output.append(ident_dict)
         values["rights"] = output
         return values
