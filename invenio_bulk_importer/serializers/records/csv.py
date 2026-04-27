@@ -499,7 +499,7 @@ class CSVRecordSchema(BaseModel):
     metadata: MetadataSchema
 
     @field_validator("pids", mode="before")
-    def validate_references(cls, value):
+    def validate_pids(cls, value):
         """Validate pids."""
         if not value:
             return {}
