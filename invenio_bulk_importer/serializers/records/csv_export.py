@@ -44,8 +44,25 @@ class CSVSerializer(_CSVSerializer):
                 "resource_type.title",
                 "role.title",
                 "languages.title",
+                "rights.props",
             )
         )
+
+    def is_field_included(self, key):
+        """Determines if a key should be included or not."""
+        if key in self.csv_excluded_fields or self.field_in_key(
+            key, self.csv_excluded_fields
+        ):
+            return False
+        if self.csv_included_fields and not self.key_in_field(
+            key, self.csv_included_fields
+        ):
+            return False
+        return True
+
+    def field_in_key(self, key, fields):
+        """Checks if a field from the list is included in the key."""
+        return any(field in key for field in fields)
 
     def _preprocess_access(self, access):
         """Preprocess the access dictionary.
@@ -94,9 +111,49 @@ class CSVSerializer(_CSVSerializer):
 
             return res
 
+        def parse_loactions(features):
+            res = []
+            for f in features:
+                if geometry := f.pop("geometry", None):
+                    if geometry["type"] != "Point":
+                        # TODO:: show we raise something or at least log a warning?
+                        continue
+                    f["lat"], f["lon"] = geometry["coordinates"]
+                f.pop("identifiers")  # FIXME: find a way to work around these
+                res.append(f)
+            return res
+
+        def parse_subjects(values):
+            """Parse the subjects field to turn it into subjects (vocab) and keywords (free)."""
+            res = {"keywords": [], "subjects": []}
+            for value in values:
+                if value.pop("id", None):  # This is vocabulary subject
+                    res["subjects"].append(value)
+                else:
+                    res["keywords"].append(value["subject"])
+            return res
+
         metadata["creators"] = parse_creatibutors(metadata["creators"])
         if contriuborts := metadata.get("contributors"):
             metadata["contributors"] = parse_creatibutors(contriuborts)
+
+        if features := metadata.pop("locations", {}).get("features"):
+            metadata["locations"] = parse_loactions(features)
+
+        if subjects := metadata.pop("subjects", []):
+            metadata.update(parse_subjects(subjects))
+
+        # Flatten funding.award.title, rights.decription|title
+        # This is an i18n string, but it is always set to 'en'
+        for f in metadata.get("funding", []):
+            if award_title := f.get("award", {}).get("title", {}).get("en"):
+                f["award"]["title"] = award_title
+
+        for r in metadata.get("rights", []):
+            if title := r.get("title", {}).get("en"):
+                r["title"] = title
+            if desc := r.get("description", {}).get("en"):
+                r["description"] = desc
 
         return metadata
 

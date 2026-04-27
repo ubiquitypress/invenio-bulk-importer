@@ -235,12 +235,7 @@ def full_record_dict():
             "funding": [
                 {
                     "award": {
-                        "identifiers": [
-                            {
-                                "identifier": "https://sandbox.zenodo.org/",
-                                "scheme": "url",
-                            }
-                        ],
+                        "id": "00k4n6c32::101122956",
                         "number": "111023",
                         "title": {
                             "en": "Launching of the research program on meaning processing",  # noqa
