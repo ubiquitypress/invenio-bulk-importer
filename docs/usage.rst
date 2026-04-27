@@ -101,7 +101,7 @@ leaving a blank line rather than skipping the row. This is handled by
 passing ``drop_empty=False`` to
 :py:func:`~invenio_bulk_importer.serializers.records.utils.process_grouped_fields`
 for the ``funders``/``awards`` pair; see
-:py:class:`~invenio_bulk_importer.serializers.records.csv.MetadataSchema.load_funding`.
+:py:meth:`~invenio_bulk_importer.serializers.records.csv.MetadataSchema.load_funding`.
 
 **Affiliations use a secondary separator.** Inside a creator or
 contributor row, multiple affiliations are separated by ``;`` within a
@@ -138,7 +138,7 @@ descriptions.
    ``rights.id`` / ``rights.title`` look like discriminator columns but
    are actually a *grouped* pair — they hold the id and title of the same
    rights entry, one per newline-separated line. See the handler at
-   :py:class:`~invenio_bulk_importer.serializers.records.csv.MetadataSchema.load_rights`.
+   :py:meth:`~invenio_bulk_importer.serializers.records.csv.MetadataSchema.load_rights`.
 
 **Known limitation.** A discriminator column cannot represent two entries
 with the same discriminator on the same record — e.g. two
@@ -294,10 +294,11 @@ Metadata columns
      - Counts must match. Each pair is looked up in the ``subjects``
        vocabulary; unmatched entries fail validation.
    * - ``keywords``
-     - flat (alias)
+     - flat (list)
      - ``metadata.subjects[]`` (unschemed)
-     - Newline-separated keywords; each becomes a subject entry with no
-       scheme. See `Aliases and shortcuts`_.
+     - Free-text terms. Newline-separated; each becomes a subject entry
+       with no scheme. Use ``subjects.subject`` / ``subjects.scheme``
+       for vocabulary-controlled entries.
    * - ``references.reference``
      - flat (list)
      - ``metadata.references[].reference``
@@ -363,9 +364,12 @@ backward compatibility:
     with the record.
 
 ``keywords``
-    Each newline-separated value is appended to ``metadata.subjects``
-    as a subject entry without a scheme. Runs alongside
-    ``subjects.subject`` / ``subjects.scheme`` — both feeds are merged.
+    Free-text terms. Each newline-separated value is appended to
+    ``metadata.subjects`` as a subject entry without a scheme. This is
+    not a shortcut for ``subjects`` — they are two distinct inputs that
+    both land in ``metadata.subjects``: ``keywords`` for free text, and
+    ``subjects.subject`` / ``subjects.scheme`` for entries drawn from a
+    controlled vocabulary. The two feeds are merged on read.
 
 ``default_community_slug``
     Accepted aliases: ``default_collection``, ``default_collection_slug``.
@@ -393,22 +397,11 @@ tickets can be tracked against concrete sections.
   The second cell silently overwrites the first on read. If this case
   appears in real data, the field must migrate to the grouped pattern.
 
-* **Keywords vs. subjects.** ``keywords`` is a flat column; ``subjects``
-  uses the grouped pattern with vocabulary lookup. Both feed
-  ``metadata.subjects``. Whether we keep the two-tier split or
-  consolidate onto ``subjects`` (treating keyword-only entries as
-  schemeless subjects) is an open decision.
-
 * **Aliases: keep or deprecate?** ``doi``, ``filenames``, and the
   ``default_collection`` / ``community_slugs`` variants are in active
   use. We have not decided whether they are permanent shortcuts or
   transitional aliases to be removed in a future version. This page
   currently documents them as permanent.
-
-* **Funding on export.** ``funders.*`` and ``awards.*`` are supported on
-  import but not yet emitted by the export serializer
-  (:py:class:`~invenio_bulk_importer.serializers.records.csv_export.CSVSerializer`).
-  Round-tripping a record through export/import will drop funding.
 
 * **Custom fields documentation.** Custom-field behaviour is driven by
   ``BULK_IMPORTER_CUSTOM_FIELDS`` and is therefore site-specific. We
