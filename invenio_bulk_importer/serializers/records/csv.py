@@ -154,7 +154,7 @@ class Award(BaseModel):
 
     id: str | None = Field(default=None)
     number: str | None = Field(default=None)
-    title: str | None = Field(default=None)
+    title: dict[str, str] | None = Field(default=None)
     acronym: str | None = Field(default=None)
     program: str | None = Field(default=None)
     identifiers: list[BaseIdentifier] | None = Field(default=None)
@@ -455,22 +455,26 @@ class MetadataSchema(BaseModel):
 
     @model_validator(mode="before")
     def load_funding(cls, values):
-        """Load funding by pairing funders with awards by row index.
-
-        Uses ``drop_empty=False`` so a blank line in the awards columns
-        stays positionally aligned with its funder.
-        """
-        funders = process_grouped_fields(values, "funders", drop_empty=False)
-        awards = process_grouped_fields(values, "awards", drop_empty=False)
+        """Load funding."""
+        funding = process_grouped_fields(values, "funding")
 
         output = []
-        for i, funder in enumerate(funders):
-            if all(v is None for v in funder.values()):
-                continue
-            entry = {"funder": funder}
-            award = awards[i] if i < len(awards) else None
-            if award and any(v is not None for v in award.values()):
-                entry["award"] = award
+        for f in funding:
+            entry = {"funder": {}}
+            if funder_id := f.get("funder.id"):
+                entry["funder"]["id"] = funder_id
+            if funder_name := f.get("funder.name"):
+                entry["funder"]["name"] = funder_name
+
+            if any(v is not None for k, v in f if k.startswith("award")):
+                entry["award"] = {}
+            if award_id := f.get("award.id"):
+                entry["award"]["id"] = award_id
+            if award_title := f.get("award.title"):
+                entry["award"]["id"] = {"en": award_title}
+            if award_number := f.get("award.nunmber"):
+                entry["award"]["number"] = award_number
+
             output.append(entry)
         values["funding"] = output
         return values
